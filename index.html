@@ -1,0 +1,1418 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="theme-color" content="#0a0b0e" id="metaThemeColor" />
+  <title>Supra AA | Android Auto Updates</title>
+  <link rel="manifest" href="./manifest.webmanifest" />
+  <link rel="apple-touch-icon" href="./icon-192.png" />
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root, [data-theme="dark"] {
+      --bg-cockpit: #090a0d;
+      --bg-carbon: radial-gradient(circle at 50% 0%, #171a24 0%, #090a0d 70%);
+      --bg-tile: linear-gradient(145deg, #141720 0%, #0f1118 100%);
+      --bg-recessed: #0b0d12;
+      --border-tile: rgba(255, 255, 255, 0.08);
+      --border-highlight: rgba(255, 255, 255, 0.16);
+      --text-main: #f8fafc;
+      --text-sub: #94a3b8;
+      --text-dim: #64748b;
+      --gr-red: #e60012;
+      --gr-red-glow: rgba(230, 0, 18, 0.35);
+      --idrive-orange: #ff5500;
+      --hud-emerald: #10b981;
+      --hud-amber: #f59e0b;
+      --shadow-tile: 0 10px 30px -10px rgba(0, 0, 0, 0.7);
+    }
+
+    [data-theme="light"] {
+      --bg-cockpit: #eef1f6;
+      --bg-carbon: linear-gradient(180deg, #e2e8f0 0%, #eef1f6 100%);
+      --bg-tile: linear-gradient(145deg, #ffffff 0%, #f8fafc 100%);
+      --bg-recessed: #f1f5f9;
+      --border-tile: #cbd5e1;
+      --border-highlight: #94a3b8;
+      --text-main: #0f172a;
+      --text-sub: #475569;
+      --text-dim: #64748b;
+      --gr-red: #d90429;
+      --gr-red-glow: rgba(217, 4, 41, 0.2);
+      --idrive-orange: #ea580c;
+      --hud-emerald: #059669;
+      --hud-amber: #d97706;
+      --shadow-tile: 0 8px 20px -8px rgba(15, 23, 42, 0.08);
+    }
+
+    *, *::before, *::after {
+      box-sizing: border-box;
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      overflow-x: hidden;
+      background-color: var(--bg-cockpit);
+      background-image: var(--bg-carbon);
+      color: var(--text-main);
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .font-cluster {
+      font-family: 'Barlow Condensed', sans-serif;
+      letter-spacing: 0.02em;
+    }
+
+    .font-telemetry {
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* Automotive Beveled Tile */
+    .cockpit-tile {
+      background: var(--bg-tile);
+      border: 1px solid var(--border-tile);
+      box-shadow: var(--shadow-tile);
+      border-radius: 14px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* Subtle top metallic rim on tiles */
+    .cockpit-tile::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--border-highlight), transparent);
+      pointer-events: none;
+    }
+
+    .recessed-well {
+      background-color: var(--bg-recessed);
+      border: 1px solid var(--border-tile);
+      border-radius: 10px;
+    }
+
+    /* GR Sport Action Button */
+    .btn-gr-action {
+      background: linear-gradient(135deg, #ff1e27 0%, #c8000f 100%);
+      color: #ffffff;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      box-shadow: 0 4px 14px var(--gr-red-glow);
+      border-radius: 10px;
+      font-family: 'Barlow Condensed', sans-serif;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+      transition: all 0.15s ease;
+    }
+
+    .btn-gr-action:hover {
+      filter: brightness(1.08);
+    }
+
+    .btn-gr-action:active {
+      transform: scale(0.97);
+    }
+
+    .btn-cockpit {
+      background-color: var(--bg-recessed);
+      border: 1px solid var(--border-tile);
+      color: var(--text-main);
+      border-radius: 10px;
+      font-weight: 600;
+      transition: all 0.15s ease;
+    }
+
+    .btn-cockpit:hover {
+      border-color: var(--border-highlight);
+    }
+
+    .btn-cockpit:active {
+      transform: scale(0.97);
+    }
+
+    .text-sub-color { color: var(--text-sub); }
+    .text-dim-color { color: var(--text-dim); }
+    .border-tile-color { border-color: var(--border-tile); }
+
+    /* Telemetry Status Accents */
+    .accent-bar-ok {
+      border-left: 4px solid var(--hud-emerald);
+    }
+    .accent-bar-warn {
+      border-left: 4px solid var(--hud-amber);
+    }
+    .accent-bar-neutral {
+      border-left: 4px solid var(--gr-red);
+    }
+
+    .pill-ok {
+      background: rgba(16, 185, 129, 0.14);
+      color: var(--hud-emerald);
+      border: 1px solid rgba(16, 185, 129, 0.35);
+    }
+    .pill-warn {
+      background: rgba(245, 158, 11, 0.14);
+      color: var(--hud-amber);
+      border: 1px solid rgba(245, 158, 11, 0.35);
+    }
+    .pill-gr {
+      background: rgba(230, 0, 18, 0.15);
+      color: #ff4d58;
+      border: 1px solid rgba(230, 0, 18, 0.4);
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    .animate-spin {
+      animation: spin 0.85s linear infinite;
+    }
+
+    /* GR-inspired precision dashboard: quiet surfaces, intentional accents. */
+    :root, [data-theme="dark"] {
+      --bg-cockpit: #0b0e12;
+      --bg-carbon: radial-gradient(ellipse 75% 35% at 50% -10%, #222933 0%, transparent 100%), #0b0e12;
+      --bg-tile: #151a21;
+      --bg-recessed: #0e1218;
+      --border-tile: #29313b;
+      --border-highlight: #45515f;
+      --text-main: #edf1f5;
+      --text-sub: #acb7c3;
+      --text-dim: #8493a3;
+      --gr-red: #ed2735;
+      --gr-red-glow: rgba(237, 39, 53, .2);
+      --hud-emerald: #67d6ac;
+      --hud-amber: #ffc06a;
+      --shadow-tile: 0 12px 28px rgba(0,0,0,.13);
+    }
+    [data-theme="light"] {
+      --bg-cockpit: #edf0f2;
+      --bg-carbon: linear-gradient(150deg, #e5e9ec, #f3f5f6);
+      --bg-tile: #fff;
+      --bg-recessed: #f3f5f6;
+      --border-tile: #d6dce2;
+      --border-highlight: #a8b1bc;
+      --text-main: #17202a;
+      --text-sub: #455260;
+      --text-dim: #607080;
+      --gr-red: #c90c23;
+      --gr-red-glow: rgba(201,12,35,.12);
+      --hud-emerald: #107f60;
+      --hud-amber: #995600;
+      --shadow-tile: 0 10px 24px rgba(24,34,46,.045);
+    }
+    html { scroll-behavior: smooth; }
+    body { min-height: 100vh; }
+    button, select, input { font: inherit; }
+    button, a, select { -webkit-tap-highlight-color: transparent; }
+    :focus-visible { outline: 2px solid var(--gr-red); outline-offset: 3px; }
+    .cockpit-tile { border-radius: 12px; }
+    .cockpit-tile::before { background: none; }
+    .recessed-well, .btn-cockpit { border-radius: 8px; }
+    .btn-cockpit:hover { background: var(--bg-tile); }
+    .btn-gr-action {
+      background: var(--gr-red);
+      border: 1px solid transparent;
+      box-shadow: none;
+      border-radius: 8px;
+      letter-spacing: .045em;
+    }
+    .btn-gr-action:hover { filter: brightness(1.12); }
+    .btn-gr-action:disabled { opacity: .62; cursor: progress; }
+    .masthead {
+      background: var(--bg-cockpit);
+      background-image: none;
+      border-bottom: 1px solid var(--border-tile);
+      box-shadow: 0 6px 22px rgba(0,0,0,.1);
+    }
+    .brand-mark { display: flex; align-items:center; font-family: 'Barlow Condensed',sans-serif; font-size: 13px; font-weight:800; letter-spacing:.04em; }
+    .brand-mark span { display:inline-flex; align-items:center; justify-content:center; width:24px; height:26px; color:white; }
+    .brand-mark span:first-child { background:#131820; }
+    .brand-mark span:last-child { background:#d91427; }
+    .eyebrow { font: 600 10px/1.4 'JetBrains Mono',monospace; letter-spacing:.15em; text-transform:uppercase; color:var(--text-dim); }
+    .top-title { font: 800 25px/.94 'Barlow Condensed',sans-serif; letter-spacing:.035em; text-transform:uppercase; }
+    .meta-panel { min-width:0; text-align:right; }
+    .meta-label { font:600 9px/1.5 'JetBrains Mono',monospace; letter-spacing:.1em; text-transform:uppercase; color:var(--text-dim); }
+    .meta-value { font:500 10px/1.5 'JetBrains Mono',monospace; color:var(--text-main); white-space:nowrap; }
+    .meta-value[data-state="error"] { color:var(--hud-amber); }
+    .status-dot { display:inline-block; width:6px; height:6px; border-radius:100%; background:var(--text-dim); vertical-align:middle; margin-right:4px; }
+    .status-dot[data-state="success"] { background:var(--hud-emerald); }
+    .status-dot[data-state="error"] { background:var(--hud-amber); }
+    .control-row { display:flex; gap:8px; justify-content:flex-end; align-items:center; }
+    .control-row button { white-space:nowrap; }
+    .hero-panel {
+      border:1px solid var(--border-tile);
+      border-radius:13px;
+      padding:22px 20px 19px;
+      overflow:hidden;
+      position:relative;
+      background:linear-gradient(125deg,rgba(237,39,53,.12),transparent 46%), var(--bg-tile);
+    }
+    .hero-panel::after { content:""; position:absolute; right:-100px; top:-120px; width:310px; height:310px; border:1px solid var(--border-tile); border-radius:50%; box-shadow:0 0 0 36px rgba(125,141,160,.025), 0 0 0 72px rgba(125,141,160,.025); pointer-events:none; }
+    .hero-kicker { color:var(--gr-red); font:700 11px 'JetBrains Mono',monospace; text-transform:uppercase; letter-spacing:.14em; }
+    .hero-title { font:800 clamp(32px, 7vw, 48px)/.97 'Barlow Condensed', sans-serif; letter-spacing:.025em; text-transform:uppercase; margin-top:9px; position:relative; z-index:1; }
+    .hero-description { color:var(--text-sub); font-size:12px; line-height:1.6; margin-top:9px; max-width:360px; position:relative; z-index:1; }
+    .hero-rule { display:flex; gap:4px; margin-top:17px; }
+    .hero-rule b { height:3px; width:36px; background:var(--gr-red); transform:skewX(-24deg); }
+    .hero-rule b:nth-child(2) { width:16px; opacity:.55; }
+    .hero-rule b:nth-child(3) { width:8px; opacity:.3; }
+    .section-caption { display:flex; align-items:center; gap:10px; margin:18px 1px 10px; font:700 12px 'Barlow Condensed',sans-serif; letter-spacing:.14em; text-transform:uppercase; }
+    .section-caption::after { content:""; flex:1; height:1px; background:var(--border-tile); }
+    .data-banner { border:1px solid var(--border-tile); border-left:3px solid var(--hud-amber); background:var(--bg-tile); padding:10px 13px; border-radius:8px; font-size:11px; color:var(--text-sub); line-height:1.6; }
+    .data-banner[data-state="success"] { border-left-color:var(--hud-emerald); }
+    .data-banner[hidden] { display:none; }
+    .release-search { width:100%; background:var(--bg-recessed); border:1px solid var(--border-tile); color:var(--text-main); border-radius:8px; outline:none; padding:10px 12px; font-size:12px; }
+    .release-search::placeholder { color:var(--text-dim); }
+    .release-search:focus { border-color:var(--gr-red); }
+    select, input { color:var(--text-main); background-color:var(--bg-recessed); }
+    option { background:var(--bg-tile); color:var(--text-main); }
+    .pill-gr { color:var(--gr-red); }
+    .release-card { transition: border-color .15s ease; }
+    .release-card:hover { border-color:var(--border-highlight); }
+    .footer-note { color:var(--text-dim); font-size:10px; line-height:1.7; text-align:center; padding:17px 6px 0; }
+    @media(min-width: 640px) {
+      .top-title { font-size:29px; }
+      .hero-panel { padding:27px 26px 23px; }
+    }
+    @media(max-width: 380px) {
+      .top-title { font-size:21px; }
+      .meta-value { font-size:9px; }
+      .header-inner { gap:8px; }
+      .brand-mark span { width:20px; height:23px; }
+      .control-row button { font-size:11px; padding-left:10px; padding-right:10px; }
+    }
+    @media(prefers-reduced-motion:reduce) { *,*::before,*::after { animation-duration:.01ms!important; scroll-behavior:auto!important; } }
+
+    /* Supra-inspired digital instrument cluster, not a marketing landing page. */
+    :root,[data-theme="dark"] { --bg-cockpit:#07090d; --bg-carbon:#07090d; --bg-tile:#11151b; --bg-recessed:#080c11; --border-tile:#28313b; --text-main:#f2f5f7; --text-sub:#a3afbb; --text-dim:#7d8b9b; --gr-red:#e92735; --hud-emerald:#56d4a7; --hud-amber:#ffb667; }
+    [data-theme="light"] { --bg-cockpit:#e9edef; --bg-carbon:#e9edef; --bg-tile:#f8fafb; --bg-recessed:#e5eaed; --border-tile:#cbd3db; --text-main:#15212b; --text-sub:#465565; --text-dim:#687787; --gr-red:#c9162a; --hud-emerald:#087a59; --hud-amber:#ab6512; }
+    html,body { background:var(--bg-cockpit); }
+    body:before { content:""; position:fixed; inset:0; pointer-events:none; background:repeating-linear-gradient(0deg,transparent 0 42px,rgba(123,146,168,.025) 43px),radial-gradient(ellipse 75% 38% at 50% 0%,rgba(121,137,161,.11),transparent); }
+    .dash-wrap { width:min(100% - 28px,920px); margin-inline:auto; }
+    .dash-header { background:rgba(9,12,17,.97); border-bottom:1px solid #30363f; backdrop-filter:blur(12px); }
+    [data-theme="light"] .dash-header { background:rgba(247,249,250,.96);border-bottom-color:var(--border-tile); }
+    .dash-topline { display:flex; align-items:center; justify-content:space-between; gap:12px; min-height:67px; }
+    .dash-brand { display:flex; align-items:center; gap:12px; min-width:0; }
+    .dash-brand strong { display:block; font:800 clamp(22px,4vw,29px)/.95 'Barlow Condensed',sans-serif; letter-spacing:.035em; white-space:nowrap; }
+    .dash-brand strong em { font-style:normal; color:var(--gr-red); }
+    .dash-brand small { display:block; margin-top:5px; font:600 clamp(8px,1.3vw,10px)/1.2 'JetBrains Mono',monospace; letter-spacing:.055em; color:var(--text-dim); white-space:nowrap; }
+    .dash-small-divider { color:var(--gr-red); }
+    .theme-switch { display:flex; align-items:center; gap:8px; flex-shrink:0; padding:9px 12px; border:1px solid var(--border-tile); color:var(--text-main); background:transparent; font:600 11px 'Inter',sans-serif; border-radius:4px; }
+    .theme-switch:hover { border-color:var(--gr-red); }
+    .dash-commandline { display:flex; align-items:center; justify-content:space-between; gap:14px; padding:11px 0 13px; border-top:1px solid var(--border-tile); }
+    .check-button { display:flex; align-items:center; justify-content:center; gap:9px; width:156px; height:39px; border-radius:3px; font:800 14px 'Barlow Condensed',sans-serif; letter-spacing:.035em; flex-shrink:0; }
+    .meta-panel { flex:1; text-align:right; }
+    .meta-label { font:700 10px/1.4 'JetBrains Mono',monospace; letter-spacing:.06em; }
+    .meta-value { font:500 11px/1.5 'JetBrains Mono',monospace; white-space:normal; }
+    .dash-main { position:relative; padding-top:18px; padding-bottom:50px; }
+    .cluster-intro { display:flex; justify-content:space-between; gap:15px; font:600 10px 'JetBrains Mono',monospace; letter-spacing:.095em; color:var(--text-dim); margin-bottom:10px; }
+    .instrument-cluster { position:relative; overflow:hidden; border:1px solid #343e49; border-radius:56px 56px 25px 25px / 27px 27px 25px 25px; background:radial-gradient(ellipse 55% 76% at 50% 30%,#1b2430 0%,#0c1118 70%,#080b10 100%); box-shadow:inset 0 2px 1px rgba(255,255,255,.14),inset 0 0 0 7px rgba(0,0,0,.25),0 24px 60px rgba(0,0,0,.28); color:#f1f5fa; }
+    .instrument-cluster:before { position:absolute; inset:7px; border:1px solid rgba(180,198,218,.09); border-radius:45px 45px 20px 20px / 21px 21px 20px 20px; pointer-events:none; content:""; }
+    .cluster-upper { padding:25px 35px 0; display:flex; justify-content:space-between; gap:10px; align-items:center; font:600 10px 'JetBrains Mono',monospace; letter-spacing:.14em; color:#8795a5; }
+    .cluster-eyebrow { display:flex;align-items:center;gap:9px; }
+    .cluster-status-light { width:7px;height:7px;border-radius:50%;background:#57d9a8;box-shadow:0 0 10px rgba(87,217,168,.75); }
+    .dial-row {display:grid;grid-template-columns:1fr 1px 1fr; align-items:stretch;gap:0; padding:0 24px 18px; }
+    .dial-module {min-width:0;display:flex;flex-direction:column;align-items:center; }
+    .dial-divider { background:linear-gradient(transparent,rgba(158,183,202,.18),transparent); margin:25px 0 3px; }
+    .dial-face {width:min(100%,305px);aspect-ratio:1;position:relative;display:grid;place-items:center; }
+    .dial-face:before {content:"";position:absolute;inset:15%;border-radius:50%;background:radial-gradient(circle at 45% 35%,rgba(54,72,92,.25),#090e14 76%);border:1px solid rgba(190,215,235,.14);box-shadow:inset 0 0 30px #05090d,0 0 0 1px #101722; }
+    .dial-svg { position:absolute; inset:0; width:100%;height:100%; transform:rotate(0deg);overflow:visible; }
+    .dial-track {fill:none;stroke:rgba(198,217,235,.10);stroke-width:4;stroke-dasharray:419 605;transform:rotate(145deg);transform-origin:center;stroke-linecap:round;}
+    .dial-scale {fill:none;stroke-width:4;stroke-dasharray:365 605;transform:rotate(145deg);transform-origin:center;stroke-linecap:round;filter:drop-shadow(0 0 4px currentColor);}
+    .dial-scale-stable {stroke:#ed3344;color:#ed3344;}
+    .dial-scale-testing {stroke:#f2a44c;color:#f2a44c;stroke-dasharray:285 605;}
+    .dial-mid {fill:none;stroke:rgba(129,153,179,.13);stroke-width:1;}
+    .dial-tick {stroke:#728093;stroke-width:1.2;opacity:.55;}
+    .dial-tick.major {stroke:#c6d6e4;stroke-width:2;opacity:.85;}
+    .dial-center {position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;max-width:80%;text-align:center;z-index:1; }
+    .dial-mini {color:#7f8e9f;font:600 9px 'JetBrains Mono',monospace;letter-spacing:.13em;}
+    .dial-center strong {font:700 clamp(17px,3.4vw,29px)/1.18 'JetBrains Mono',monospace;letter-spacing:-.07em;overflow-wrap:anywhere;max-width:100%;}
+    .dial-channel {font:800 16px 'Barlow Condensed',sans-serif;letter-spacing:.19em;color:#bec8d4;}
+    .dial-glow-dot {height:5px;width:32px;border-radius:4px;margin-top:4px;}
+    .stable-dot {background:#eb3545;box-shadow:0 0 12px #eb3545aa;}.testing-dot{background:#e69d4c;box-shadow:0 0 12px #e69d4caa;}
+    .dial-bottom {width:95%;padding:4px 5px 15px;text-align:center;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:9px;}
+    .dial-caption {color:#8695a8;font:700 9px 'JetBrains Mono',monospace;letter-spacing:.12em;}
+    .dial-release-name {max-width:320px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font:600 12px 'Inter',sans-serif;margin-top:4px;color:#e4eaf1;}
+    .dial-date {display:block;margin-top:3px;font:500 10px 'JetBrains Mono',monospace;color:#92a0b0;}
+    .set-installed {font:700 11px 'Barlow Condensed',sans-serif;letter-spacing:.09em;color:#f1f4f9;border:1px solid #475363;padding:7px 17px;border-radius:2px;transition:.2s;}
+    .set-installed:hover {background:#e92735;border-color:#e92735;}
+    .cluster-footer {display:flex;justify-content:space-between;gap:12px;border-top:1px solid rgba(176,200,224,.13);padding:13px 32px 17px;font:600 9px 'JetBrains Mono',monospace;color:#758597;letter-spacing:.075em;}
+    .cluster-footer b {display:inline-block;width:5px;height:5px;border-radius:50%;vertical-align:middle;}.led-stable{background:#e92735;}.led-testing{background:#f2a44c;}
+    [data-theme="light"] .instrument-cluster {border-color:#596777;box-shadow:inset 0 2px 1px #87919c,0 14px 30px #8c9ca64c;}
+    /* Below the cluster: horizontal vehicle information, not stacked generic tiles */
+    .section-caption {margin-top:25px;font-size:13px;color:var(--text-sub);}
+    .cockpit-tile {border-radius:4px;box-shadow:none;background:var(--bg-tile);}
+    #statusBanner {clip-path:polygon(0 0,calc(100% - 16px) 0,100% 16px,100% 100%,0 100%);border-left-width:3px;border-radius:0;}
+    #statusTitle {font:800 clamp(18px,3vw,24px) 'Barlow Condensed',sans-serif;letter-spacing:.02em;}
+    #statusBadgePill {border-radius:2px;}
+    .recessed-well,.btn-cockpit,.release-search {border-radius:3px;}
+    .release-card {position:relative;border-radius:0;border:0;border-top:1px solid var(--border-tile);background:transparent;box-shadow:none;padding:17px 8px 15px 15px;}
+    .release-card:before {content:"";position:absolute;left:0;top:17px;height:18px;width:3px;background:var(--gr-red);}
+    .release-card:hover {background:var(--bg-tile);}
+    .release-card .recessed-well {background:transparent;border:0;border-left:1px solid var(--border-tile);padding:2px 0 2px 13px;}
+    #releasesList {border-bottom:1px solid var(--border-tile);}
+    .btn-gr-action:not(.check-button) {border-radius:3px;}
+    .footer-note {margin-top:18px;}
+    @media(max-width:600px) {
+      .dash-wrap{width:calc(100% - 22px);}
+      .dash-topline{min-height:65px;}
+      .dash-brand{gap:8px;}
+      .brand-mark span{width:20px;height:22px;}
+      .dash-brand small{font-size:8px;letter-spacing:0;}
+      .theme-switch{padding:8px 9px;gap:5px;font-size:10px;}
+      .dash-commandline{gap:8px;}
+      .check-button{width:139px;height:37px;font-size:12px;gap:6px;}
+      .meta-label{font-size:8px;letter-spacing:0;}
+      .meta-value{font-size:9px;line-height:1.35;}
+      .cluster-intro{font-size:8px;letter-spacing:0;}
+      .cluster-upper{padding:19px 19px 0;font-size:8px;letter-spacing:.06em;}
+      .instrument-cluster{border-radius:30px 30px 12px 12px / 22px 22px 12px 12px;}
+      .dial-row{padding:0 5px 5px;}
+      .dial-face{width:100%;}
+      .dial-center{gap:3px;}
+      .dial-mini{font-size:7px;letter-spacing:0;}
+      .dial-center strong{font-size:clamp(12px,3.9vw,20px);}
+      .dial-channel{font-size:12px;letter-spacing:.08em;}
+      .dial-glow-dot{width:22px;height:3px;}
+      .dial-caption{font-size:7px;letter-spacing:0;}
+      .dial-release-name{font-size:10px;max-width:145px;}
+      .dial-date{font-size:8px;}
+      .set-installed{font-size:10px;padding:6px 9px;}
+      .dial-bottom{gap:6px;padding-bottom:12px;}
+      .cluster-footer{font-size:7px;padding:11px 14px 13px;}
+    }
+    @media(max-width:355px) {.dash-brand strong{font-size:20px}.dash-brand small{font-size:7px}.meta-value{font-size:8px}.check-button{width:124px}.cluster-upper{font-size:7px}.dial-release-name{max-width:115px}}
+
+
+
+    /* A90-inspired instrument binnacle: central tachometer, flanking status readouts. */
+    .a90-cluster{border-radius:52px 52px 18px 18px / 28px 28px 18px 18px!important;background:radial-gradient(ellipse 58% 70% at 50% 43%,#172331 0%,#0b1017 69%,#080c11 100%)!important;color:#f0f3f8;min-height:370px;box-shadow:inset 0 2px 0 rgba(255,255,255,.09),inset 0 0 0 5px #070b10,0 25px 65px rgba(0,0,0,.23)!important;}
+    .a90-cluster:before{border-radius:45px 45px 12px 12px / 22px 22px 12px 12px!important;}
+    .a90-instrument-top,.a90-instrument-foot{position:relative;z-index:3;display:flex;align-items:center;justify-content:space-between;gap:8px;color:#8f9bac;font:600 10px 'JetBrains Mono',monospace;letter-spacing:.06em;}
+    .a90-instrument-top{padding:25px 31px 2px}.a90-instrument-top>span:first-child{display:flex;align-items:center;gap:9px}
+    .a90-instrument-foot{border-top:1px solid #25303a;padding:12px 28px 16px;font-size:9px}
+    .a90-instrument-foot b{display:inline-block;width:6px;height:6px;border-radius:50%;vertical-align:middle}
+    .a90-cockpit-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(260px,1.45fr) minmax(0,1fr);align-items:center;gap:0;padding:0 23px 5px;}
+    .a90-tach-wrap{position:relative;min-width:0;align-self:center;max-width:420px;margin:0 auto;width:100%;}
+    .a90-tach-svg{width:100%;display:block;filter:drop-shadow(0 3px 5px rgba(0,0,0,.45));}
+    .a90-tach-center{position:absolute;inset:28% 14% 23%;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;pointer-events:none;gap:7px;}
+    .a90-center-kicker{font:600 9px 'JetBrains Mono',monospace;letter-spacing:.1em;color:#8b9aab}
+    .a90-tach-center strong{font:800 clamp(19px,3vw,32px)/1.05 'Barlow Condensed',sans-serif;white-space:nowrap;letter-spacing:.02em;color:white;}
+    .a90-center-label{font:700 11px 'Barlow Condensed',sans-serif;letter-spacing:.18em;color:#f23a48}
+    .a90-gauge-foot{position:absolute;left:0;right:0;bottom:7%;text-align:center;font:600 8px 'JetBrains Mono',monospace;letter-spacing:.1em;color:#748395}
+    .a90-gauge-foot span{color:#dd2738}
+    .a90-side{min-width:0;padding:4px 6px;display:flex;flex-direction:column;align-items:flex-start;gap:7px;z-index:2;}
+    .a90-right{align-items:flex-end;text-align:right}.a90-side-heading{display:flex;align-items:center;gap:6px;font:700 10px 'JetBrains Mono',monospace;color:#c0cad4;letter-spacing:.03em;white-space:nowrap}
+    .a90-redline,.a90-amberline{width:3px;height:12px;background:#f12a3b;display:inline-block}.a90-amberline{background:#f1ab56}
+    .a90-version{font:800 clamp(20px,2.5vw,31px)/1 'Barlow Condensed',sans-serif;letter-spacing:.025em;overflow-wrap:anywhere;color:#fff;}
+    .a90-name{font:500 11px/1.35 'Inter',sans-serif;color:#b8c2cd;max-width:190px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .a90-date{font:500 10px 'JetBrains Mono',monospace;color:#8090a2}
+    .a90-action{border:1px solid #3f4c59;background:#141d27;color:#f1f4f8;border-radius:2px;margin-top:8px;padding:8px 12px;font:700 11px 'Barlow Condensed',sans-serif;letter-spacing:.09em;cursor:pointer}
+    .a90-action:hover{border-color:#ee2e40;background:#27202a}
+    @media(max-width:700px){
+      .a90-instrument-top{padding:19px 18px 0;font-size:8px;letter-spacing:0}
+      .a90-cluster{border-radius:32px 32px 13px 13px / 20px 20px 13px 13px!important;min-height:0}
+      .a90-cockpit-grid{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:5px 12px;padding:0 17px 13px;}
+      .a90-tach-wrap{grid-column:1/-1;grid-row:1;width:min(100%,350px);}
+      .a90-side{grid-row:2;padding:8px 0 5px;border-top:1px solid #26313e;gap:5px}
+      .a90-left{grid-column:1}.a90-right{grid-column:2}
+      .a90-version{font-size:clamp(23px,6vw,31px)}.a90-side-heading{font-size:9px}
+      .a90-name{max-width:100%;font-size:10px}.a90-date{font-size:9px}
+      .a90-action{margin-top:5px;font-size:10px;padding:8px 10px}
+      .a90-tach-center strong{font-size:clamp(22px,7vw,32px)}
+      .a90-instrument-foot{padding:11px 15px 13px;font-size:8px}
+    }
+    @media(max-width:355px){.a90-side-heading{font-size:8px}.a90-gauge-foot{font-size:7px}.a90-action{padding:7px 8px}.a90-instrument-top{font-size:7px}}
+
+
+    /* V5: A90-style binnacle silhouette, inset TFT and mechanical dial. */
+    .a90-cluster {
+      border-radius:64px 64px 17px 17px / 38px 38px 15px 15px !important;
+      border:2px solid #303740 !important;
+      background:radial-gradient(ellipse 44% 78% at 48% 47%,#16202b 0%,#090d14 78%,#020408 100%) !important;
+      box-shadow:inset 0 3px 0 #4d5660,inset 0 0 0 9px #05070a,inset 0 -15px 35px #0009,0 19px 36px #0006 !important;
+    }
+    .a90-cluster:before {inset:9px!important;border:1px solid #434e5b55!important;}
+    .a90-instrument-top {padding-top:27px;color:#9ea9b8;}
+    .a90-cockpit-grid {grid-template-columns:minmax(0,1fr) minmax(280px,1.65fr) minmax(0,1fr);padding:0 20px 17px;gap:4px;}
+    .a90-tach-wrap {max-width:430px;}
+    .a90-tach-center {inset:31% 19% 25%;gap:5px;}
+    .a90-center-kicker {color:#96a8b8;font-size:9px;}
+    .a90-tach-center strong {font:800 clamp(21px,3vw,33px)/1.1 'Barlow Condensed',sans-serif;background:#0a1119cb;border-top:1px solid #283b4a;border-bottom:1px solid #283b4a;padding:5px 12px;max-width:96%;overflow-wrap:anywhere;white-space:normal;}
+    .a90-center-label {color:#f13e4c;}
+    .a90-side {border-left:1px solid #26323e;min-height:138px;padding:8px 10px;justify-content:center;background:linear-gradient(100deg,#121c26b3,#09101922);}
+    .a90-right {border-left:0;border-right:1px solid #26323e;background:linear-gradient(260deg,#121c26b3,#09101922);}
+    .a90-version {font-size:clamp(20px,2.6vw,30px);}
+    .a90-action {border-radius:0;}
+    .sort-helper {display:inline-block;margin-left:8px;font:700 9px 'JetBrains Mono',monospace;color:var(--text-dim);letter-spacing:.04em;}
+    @media(max-width:700px){
+      .a90-cluster{border-radius:35px 35px 12px 12px / 22px 22px 12px 12px!important;}
+      .a90-cockpit-grid{grid-template-columns:minmax(0,1fr) minmax(0,1fr);padding:0 15px 14px;gap:5px 12px;}
+      .a90-tach-wrap{width:min(100%,348px);}
+      .a90-tach-center{inset:31% 16% 25%;}
+      .a90-side{min-height:0;padding:11px 2px 5px;background:none;border-left:0;border-right:0;border-top:1px solid #26313e;}
+      .a90-tach-center strong{font-size:clamp(20px,6.5vw,31px);padding:4px 10px;}
+      .sort-helper{font-size:8px;margin-left:4px;}
+    }
+
+
+    /* Post-refresh vehicle status, shown only after a successful GitHub check. */
+    .check-result-summary { border-top:1px solid var(--border-tile); padding:8px 0 10px; display:flex; gap:5px 12px; align-items:baseline; justify-content:space-between; flex-wrap:wrap; }
+    .check-result-summary[hidden] { display:none!important; }
+    .check-result-summary strong { font:700 14px 'Barlow Condensed',Arial,sans-serif; color:var(--text-main); }
+    .check-result-summary span { color:var(--text-sub); font:500 11px/1.4 'Inter',Arial,sans-serif; }
+    @media(max-width:600px) { .check-result-summary { padding:7px 0; gap:2px; } .check-result-summary strong {font-size:13px;} .check-result-summary span {font-size:10px;} }
+
+    /* V6: stronger mobile timestamp, readable without changing its footprint. */
+    .meta-value { font-weight:700 !important; }
+    @media(max-width:700px){ .meta-value{font-weight:800 !important;} }
+    #a90Needle { will-change:transform; }
+
+    /* Standalone layout fallbacks for offline/file use if Tailwind CDN is unavailable. */
+    .hidden {display:none!important;} .flex{display:flex;} .inline-flex{display:inline-flex;} .grid{display:grid;} .flex-col{flex-direction:column;} .flex-wrap{flex-wrap;} .items-center{align-items:center;} .items-start{align-items:flex-start;} .justify-between{justify-content:space-between;} .justify-center{justify-content:center;} .shrink-0{flex-shrink:0;} .flex-1{flex:1;} .min-w-0{min-width:0;} .w-full{width:100%;} .w-4{width:16px;} .h-4{height:16px;} .w-3{width:12px;} .h-3{height:12px;} .w-3\.5{width:14px;} .h-3\.5{height:14px;} .h-9{height:36px;} .h-8{height:32px;} .h-7{height:28px;} .grid-cols-1{grid-template-columns:minmax(0,1fr);} .grid-cols-2{grid-template-columns:repeat(2,minmax(0,1fr));} .gap-1{gap:4px;} .gap-1\.5{gap:6px;} .gap-2{gap:8px;} .gap-3{gap:12px;} .space-y-3>*+*{margin-top:12px;} .space-y-2\.5>*+*{margin-top:10px;} .space-y-1\.5>*+*{margin-top:6px;} .p-4{padding:16px;} .p-3{padding:12px;} .p-3\.5{padding:14px;} .p-1{padding:4px;} .px-2{padding-inline:8px;} .px-2\.5{padding-inline:10px;} .px-3{padding-inline:12px;} .px-3\.5{padding-inline:14px;} .py-1\.5{padding-block:6px;} .py-0\.5{padding-block:2px;} .pt-1{padding-top:4px;} .pt-2{padding-top:8px;} .pt-0\.5{padding-top:2px;} .mt-0\.5{margin-top:2px;} .mt-1\.5{margin-top:6px;} .font-bold{font-weight:700;} .font-semibold{font-weight:600;} .text-xs{font-size:12px;} .text-sm{font-size:14px;} .text-base{font-size:16px;} .text-\[11px\]{font-size:11px;} .text-\[10px\]{font-size:10px;} .text-\[9px\]{font-size:9px;} .leading-relaxed{line-height:1.6;} .uppercase{text-transform:uppercase;} .tracking-wide{letter-spacing:.03em;} .truncate{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;} .border-t{border-top:1px solid var(--border-tile);} .rounded{border-radius:4px;} .rounded-lg{border-radius:8px;} .rounded-full{border-radius:100px;} .list-disc{list-style-type:disc;} .list-inside{list-style-position:inside;} .whitespace-pre-line{white-space:pre-line;} .no-underline{text-decoration:none;} .hover\:underline:hover{text-decoration:underline;} .cursor-pointer{cursor:pointer;} .text-center{text-align:center;} .text-dim-color{color:var(--text-dim);} .text-sub-color{color:var(--text-sub);} .font-cluster{font-family:'Barlow Condensed',Arial,sans-serif;} .font-telemetry{font-family:'JetBrains Mono',monospace;} .release-card .recessed-well{padding:8px 12px;} .release-card{margin-bottom:0;} .release-card>div:first-child{display:flex;justify-content:space-between;gap:8px;} .release-card .font-telemetry{overflow-wrap:anywhere;} #releasesList{margin-top:12px;} #releaseSearch{margin-top:0;} #statusBanner>div:first-child{display:flex;align-items:center;justify-content:space-between;gap:10px;} #statusBanner select,#statusBanner input{width:100%;max-width:100%;height:36px;padding-inline:10px;font-size:11px;} #statusBanner button{white-space:nowrap;} #statusBanner .grid{gap:8px;} #statusBanner .grid>div{display:flex;gap:6px;min-width:0;} #statusBanner .grid>div input{min-width:0;flex:1;} #statusBanner .grid>div button{padding-inline:13px;} #statusBanner h2{font-size:14px;} .set-installed{color:#edf4f9;background:transparent;} .check-button svg{width:16px;height:16px;flex-shrink:0;} .theme-switch svg{width:16px;height:16px;flex-shrink:0;} .release-card svg{width:14px;height:14px;flex-shrink:0;} .release-card a,.release-card button{white-space:nowrap;} @media(min-width:640px){.sm\:grid-cols-2{grid-template-columns:repeat(2,minmax(0,1fr));}.sm\:text-xl{font-size:20px;}} 
+
+  
+    /* V7: compact channel/date readout in the cumulative change list. */
+    #missedChangesList { list-style:none; padding-left:0; margin:8px 0 0; }
+    #missedChangesList li { padding:8px 0; border-bottom:1px solid var(--border-tile); }
+    #missedChangesList li:last-child { border-bottom:0; }
+    .cumulative-entry-heading { display:flex; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:3px; }
+    .cumulative-entry-heading strong { font-size:12px; }
+    .cumulative-channel { display:inline-flex; align-items:center; border-radius:3px; padding:2px 6px; font:700 9px/1.2 'JetBrains Mono',monospace; letter-spacing:.03em; }
+    .cumulative-date { color:var(--text-dim); font:600 10px/1.3 'JetBrains Mono',monospace; }
+    .cumulative-summary { font-size:12px; line-height:1.55; display:block; color:var(--text-main); }
+
+
+    /* V9: Fixed-height status slot prevents sticky-header reflow on refresh. */
+    .check-result-summary { height:54px; min-height:54px; max-height:54px; overflow:hidden; flex-wrap:nowrap; align-items:center; }
+    .check-result-summary strong { flex:0 0 42%; min-width:0; display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; overflow:hidden; line-height:1.1; }
+    .check-result-summary span { flex:1; min-width:0; display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; overflow:hidden; }
+    @media(max-width:600px) { .check-result-summary {height:62px;min-height:62px;max-height:62px;flex-direction:column;align-items:stretch;justify-content:center;gap:2px;} .check-result-summary strong,.check-result-summary span{flex:0 0 auto; -webkit-line-clamp:1;white-space:nowrap;text-overflow:ellipsis;} }
+
+    /* V10: unobtrusive install affordance. */
+    .header-actions{display:flex;align-items:center;gap:7px;flex-shrink:0}
+    .install-shortcut{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:36px;padding:7px 10px;color:var(--text-main);border:1px solid var(--border-tile);background:transparent;border-radius:4px;font:700 11px 'Inter',sans-serif;cursor:pointer;white-space:nowrap}
+    .install-shortcut:hover{border-color:var(--gr-red);color:var(--gr-red)}
+    .install-shortcut svg{height:15px;width:15px}
+    .install-dialog{border:1px solid var(--border-highlight);border-radius:12px;background:var(--bg-tile);color:var(--text-main);box-shadow:0 25px 90px rgba(0,0,0,.6);width:min(420px,calc(100vw - 28px));max-height:90dvh;overflow:auto;padding:23px}
+    .install-dialog::backdrop{background:rgba(0,0,0,.7);backdrop-filter:blur(3px)}
+    .install-dialog h2{font:800 27px 'Barlow Condensed',sans-serif;letter-spacing:.035em;margin:0 0 8px}
+    .install-dialog p,.install-dialog li{color:var(--text-sub);font-size:13px;line-height:1.65}
+    .install-dialog ol{padding-left:22px;margin:10px 0}
+    .install-dialog strong{color:var(--text-main)}
+    .install-dialog .hint{font-size:11px;color:var(--text-dim);margin-top:12px}
+    .install-dialog .dialog-close{float:right;background:var(--bg-recessed);color:var(--text-main);border:1px solid var(--border-tile);border-radius:5px;padding:5px 9px;cursor:pointer}
+    @media(max-width:430px){.header-actions{gap:5px}.install-shortcut{font-size:10px;padding:7px 8px}.install-shortcut svg{width:14px;height:14px}.theme-switch{padding:8px 9px;font-size:10px}}
+    @media(max-width:350px){.install-shortcut .install-label{display:none}}
+  </style>
+</head>
+<body class="min-h-screen pb-12">
+
+  <header class="dash-header sticky top-0 z-30">
+    <div class="dash-wrap">
+      <div class="dash-topline">
+        <div class="dash-brand"><div class="brand-mark" aria-label="GR inspired mark"><span>G</span><span>R</span></div><div><strong>SUPRA <em>AA</em></strong><small>ANDROID AUTO UPDATES <span class="dash-small-divider">/</span> iDRIVE 6</small></div></div>
+        <div class="header-actions"><button id="installAppBtn" type="button" class="install-shortcut" title="Add Supra AA to your home screen or desktop" aria-label="Install app or create shortcut"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v12m0 0 4-4m-4 4-4-4M5 17v3h14v-3"/></svg><span class="install-label">Install App</span></button>
+        <button id="themeToggleBtn" type="button" title="Switch between Dark Mode and Light Mode" aria-label="Switch to Light Mode" class="theme-switch">
+          <svg id="themeIconSun" class="w-4 h-4 hidden" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path stroke-linecap="round" d="M12 2v2m0 16v2M4.93 4.93l1.42 1.42m11.3 11.3 1.42 1.42M2 12h2m16 0h2M4.93 19.07l1.42-1.42m11.3-11.3 1.42-1.42"/></svg>
+          <svg id="themeIconMoon" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/></svg>
+          <span id="themeModeLabel">Dark Mode</span>
+        </button></div>
+      </div>
+      <div class="dash-commandline">
+        <button id="refreshBtn" type="button" class="btn-gr-action check-button" aria-label="Check GitHub for updates">
+          <svg id="refreshIcon" class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg><span>Check Updates</span>
+        </button>
+        <div class="meta-panel" role="status" aria-live="polite"><div class="meta-label"><span class="status-dot" id="syncStatusDot"></span><span id="syncStatusLabel">NOT CHECKED</span></div><div id="lastCheckedBadge" class="meta-value">Last checked: Never</div></div>
+      </div>
+      <div id="checkResultSummary" class="check-result-summary" role="status" aria-live="polite">
+        <strong id="checkResultTitle">Select installed version</strong>
+        <span id="checkResultSubtitle">Check GitHub to verify the release status.</span>
+      </div>
+    </div>
+  </header>
+
+  <main class="dash-wrap dash-main">
+    <div class="cluster-intro"><span>ANDROID AUTO // RELEASE STATUS</span><span>GR SUPRA · NBT-AAD</span></div>
+    <section class="instrument-cluster a90-cluster" aria-label="A90-inspired Android Auto release status">
+  <div class="a90-instrument-top"><span><i class="cluster-status-light"></i> GR SUPRA / ANDROID AUTO</span><span>SOFTWARE STATUS</span></div>
+  <div class="a90-cockpit-grid">
+    <div class="a90-side a90-left">
+      <div class="a90-side-heading"><span class="a90-redline"></span>LATEST STABLE</div>
+      <div id="latestStableTag" class="a90-version">v1.9.33</div>
+      <div id="latestStableName" class="a90-name">TurboCode Release</div>
+      <div id="latestStableDate" class="a90-date">Nov 7, 2026</div>
+      <button id="markStableInstalledBtn" type="button" class="a90-action">SET INSTALLED <span aria-hidden="true">↗</span></button>
+    </div>
+    <div class="a90-tach-wrap">
+      <svg class="a90-tach-svg" viewBox="0 0 400 380" aria-hidden="true"><defs><radialGradient id="a90Disc"><stop offset="0" stop-color="#111b26"/><stop offset=".72" stop-color="#0b1119"/><stop offset="1" stop-color="#030609"/></radialGradient><linearGradient id="a90Red" x1="0" x2="1"><stop offset="0" stop-color="#9d0815"/><stop offset=".6" stop-color="#f12b38"/><stop offset="1" stop-color="#ff5441"/></linearGradient></defs><circle cx="200" cy="190" r="164" fill="url(#a90Disc)" stroke="#303942" stroke-width="2"/><circle cx="200" cy="190" r="155" fill="none" stroke="#0a0e13" stroke-width="6"/><circle cx="200" cy="190" r="140" fill="none" stroke="#4d5966" stroke-width="1" opacity=".7"/><path d="M200.0,334.0 A144,144 0 1 1 327.1,122.4" fill="none" stroke="#a5b2c3" stroke-width="2" opacity=".55"/><path d="M243.9,54.9 A142,142 0 0 1 326.5,125.5" fill="none" stroke="url(#a90Red)" stroke-width="12"/><path d="M242.4,73.5 A124,124 0 0 1 309.5,131.8" fill="none" stroke="#b91224" stroke-width="15" opacity=".26"/><line x1="200.0" y1="325.0" x2="200.0" y2="344.0" stroke="#edf3f9" stroke-width="3" opacity="1"/><line x1="189.5" y1="329.6" x2="188.7" y2="339.6" stroke="#edf3f9" stroke-width="1.1" opacity="0.5"/><line x1="179.0" y1="328.4" x2="177.5" y2="338.3" stroke="#edf3f9" stroke-width="1.1" opacity="0.5"/><line x1="168.6" y1="326.4" x2="166.3" y2="336.2" stroke="#edf3f9" stroke-width="1.1" opacity="0.5"/><line x1="158.4" y1="323.7" x2="155.4" y2="333.2" stroke="#edf3f9" stroke-width="1.1" opacity="0.5"/><line x1="148.4" y1="320.2" x2="144.8" y2="329.5" stroke="#edf3f9" stroke-width="1.1" opacity="0.5"/><line x1="138.8" y1="315.9" x2="134.4" y2="324.9" stroke="#edf3f9" stroke-width="1.1" opacity="0.5"/><line x1="129.5" y1="310.9" x2="124.4" y2="319.6" stroke="#edf3f9" stroke-width="1.1" opacity="0.5"/><line x1="123.4" y1="301.2" x2="112.6" y2="316.8" stroke="#edf3f9" stroke-width="3" opacity="1"/><line x1="112.1" y1="299.0" x2="105.8" y2="306.7" stroke="#edf3f9" stroke-width="1.1" opacity="0.5"/><line x1="104.1" y1="292.0" x2="97.3" y2="299.3" stroke="#edf3f9" stroke-width="1.1" opacity="0.5"/><line x1="96.7" y1="284.5" x2="89.3" y2="291.3" stroke="#edf3f9" stroke-width="1.1" opacity="0.5"/><line x1="89.9" y1="276.5" x2="82.0" y2="282.6" stroke="#edf3f9" stroke-width="1.1" opacity="0.5"/><line x1="83.7" y1="267.9" x2="75.4" y2="273.5" stroke="#edf3f9" stroke-width="1.1" opacity="0.5"/><line x1="78.2" y1="258.9" x2="69.4" y2="263.9" stroke="#edf3f9" stroke-width="1.1" opacity="0.5"/><line x1="73.3" y1="249.6" x2="64.3" y2="253.8" stroke="#edf3f9" stroke-width="1.1" opacity="0.5"/><line x1="73.8" y1="238.1" x2="56.1" y2="244.8" stroke="#edf3f9" stroke-width="3" opacity="1"/><line x1="65.8" y1="229.8" x2="56.2" y2="232.7" stroke="#edf3f9" stroke-width="1.1" opacity="0.5"/><line x1="63.2" y1="219.6" x2="53.4" y2="221.7" stroke="#edf3f9" stroke-width="1.1" opacity="0.5"/><line x1="61.3" y1="209.2" x2="51.4" y2="210.6" stroke="#edf3f9" stroke-width="1.1" opacity="0.5"/><line x1="60.3" y1="198.7" x2="50.3" y2="199.3" stroke="#edf3f9" stroke-width="1.1" opacity="0.5"/><line x1="60.0" y1="188.2" x2="50.0" y2="188.0" stroke="#edf3f9" stroke-width="1.1" opacity="0.5"/><line x1="60.5" y1="177.6" x2="50.6" y2="176.7" stroke="#edf3f9" stroke-width="1.1" opacity="0.5"/><line x1="61.9" y1="167.2" x2="52.0" y2="165.5" stroke="#edf3f9" stroke-width="1.1" opacity="0.5"/><line x1="68.8" y1="158.0" x2="50.4" y2="153.5" stroke="#edf3f9" stroke-width="3" opacity="1"/><line x1="66.9" y1="146.7" x2="57.4" y2="143.6" stroke="#edf3f9" stroke-width="1.1" opacity="0.5"/><line x1="70.5" y1="136.7" x2="61.3" y2="132.9" stroke="#edf3f9" stroke-width="1.1" opacity="0.5"/><line x1="74.9" y1="127.1" x2="66.0" y2="122.7" stroke="#edf3f9" stroke-width="1.1" opacity="0.5"/><line x1="80.0" y1="117.9" x2="71.4" y2="112.7" stroke="#edf3f9" stroke-width="1.1" opacity="0.5"/><line x1="85.8" y1="109.1" x2="77.6" y2="103.3" stroke="#edf3f9" stroke-width="1.1" opacity="0.5"/><line x1="92.2" y1="100.7" x2="84.5" y2="94.3" stroke="#edf3f9" stroke-width="1.1" opacity="0.5"/><line x1="99.2" y1="92.8" x2="92.0" y2="85.9" stroke="#edf3f9" stroke-width="1.1" opacity="0.5"/><line x1="110.2" y1="89.2" x2="97.5" y2="75.0" stroke="#edf3f9" stroke-width="3" opacity="1"/><line x1="115.0" y1="78.8" x2="108.9" y2="70.8" stroke="#edf3f9" stroke-width="1.1" opacity="0.5"/><line x1="123.6" y1="72.7" x2="118.1" y2="64.3" stroke="#edf3f9" stroke-width="1.1" opacity="0.5"/><line x1="132.7" y1="67.3" x2="127.9" y2="58.5" stroke="#edf3f9" stroke-width="1.1" opacity="0.5"/><line x1="142.1" y1="62.5" x2="138.0" y2="53.4" stroke="#edf3f9" stroke-width="1.1" opacity="0.5"/><line x1="151.9" y1="58.5" x2="148.4" y2="49.1" stroke="#edf3f9" stroke-width="1.1" opacity="0.5"/><line x1="161.9" y1="55.3" x2="159.2" y2="45.7" stroke="#edf3f9" stroke-width="1.1" opacity="0.5"/><line x1="172.2" y1="52.8" x2="170.2" y2="43.0" stroke="#edf3f9" stroke-width="1.1" opacity="0.5"/><line x1="183.2" y1="56.0" x2="180.9" y2="37.2" stroke="#edf3f9" stroke-width="3" opacity="1"/><line x1="193.1" y1="50.2" x2="192.6" y2="40.2" stroke="#edf3f9" stroke-width="1.1" opacity="0.5"/><line x1="203.7" y1="50.0" x2="203.9" y2="40.1" stroke="#edf3f9" stroke-width="1.1" opacity="0.5"/><line x1="214.2" y1="50.7" x2="215.2" y2="40.8" stroke="#edf3f9" stroke-width="1.1" opacity="0.5"/><line x1="224.7" y1="52.2" x2="226.4" y2="42.3" stroke="#edf3f9" stroke-width="1.1" opacity="0.5"/><line x1="235.0" y1="54.4" x2="237.5" y2="44.8" stroke="#edf3f9" stroke-width="1.1" opacity="0.5"/><line x1="245.1" y1="57.5" x2="248.3" y2="48.0" stroke="#edf3f9" stroke-width="1.1" opacity="0.5"/><line x1="254.9" y1="61.2" x2="258.9" y2="52.0" stroke="#ff4b4c" stroke-width="1.1" opacity="0.5"/><line x1="262.2" y1="70.2" x2="270.9" y2="53.3" stroke="#ff4b4c" stroke-width="3" opacity="1"/><line x1="273.7" y1="71.0" x2="278.9" y2="62.4" stroke="#ff4b4c" stroke-width="1.1" opacity="0.5"/><line x1="282.4" y1="76.8" x2="288.3" y2="68.8" stroke="#ff4b4c" stroke-width="1.1" opacity="0.5"/><line x1="290.7" y1="83.4" x2="297.2" y2="75.8" stroke="#ff4b4c" stroke-width="1.1" opacity="0.5"/><line x1="298.5" y1="90.5" x2="305.5" y2="83.4" stroke="#ff4b4c" stroke-width="1.1" opacity="0.5"/><line x1="305.7" y1="98.2" x2="313.3" y2="91.7" stroke="#ff4b4c" stroke-width="1.1" opacity="0.5"/><line x1="312.3" y1="106.4" x2="320.4" y2="100.5" stroke="#ff4b4c" stroke-width="1.1" opacity="0.5"/><line x1="318.3" y1="115.1" x2="326.8" y2="109.8" stroke="#ff4b4c" stroke-width="1.1" opacity="0.5"/><line x1="319.2" y1="126.6" x2="336.0" y2="117.7" stroke="#ff4b4c" stroke-width="3" opacity="1"/><text x="200.0" y="303.0" text-anchor="middle" dominant-baseline="central" font-family="Barlow Condensed,Arial,sans-serif" font-size="25" font-weight="700" fill="#f1f5fa">0</text><text x="135.9" y="283.0" text-anchor="middle" dominant-baseline="central" font-family="Barlow Condensed,Arial,sans-serif" font-size="25" font-weight="700" fill="#f1f5fa">1</text><text x="94.4" y="230.2" text-anchor="middle" dominant-baseline="central" font-family="Barlow Condensed,Arial,sans-serif" font-size="25" font-weight="700" fill="#f1f5fa">2</text><text x="90.2" y="163.2" text-anchor="middle" dominant-baseline="central" font-family="Barlow Condensed,Arial,sans-serif" font-size="25" font-weight="700" fill="#f1f5fa">3</text><text x="124.8" y="105.6" text-anchor="middle" dominant-baseline="central" font-family="Barlow Condensed,Arial,sans-serif" font-size="25" font-weight="700" fill="#f1f5fa">4</text><text x="185.9" y="77.9" text-anchor="middle" dominant-baseline="central" font-family="Barlow Condensed,Arial,sans-serif" font-size="25" font-weight="700" fill="#f1f5fa">5</text><text x="252.1" y="89.7" text-anchor="middle" dominant-baseline="central" font-family="Barlow Condensed,Arial,sans-serif" font-size="25" font-weight="700" fill="#f1f5fa">6</text><text x="299.8" y="136.9" text-anchor="middle" dominant-baseline="central" font-family="Barlow Condensed,Arial,sans-serif" font-size="25" font-weight="700" fill="#ff4f54">7</text><path d="M200.0,264.0 A74,74 0 1 1 264.7,154.1" fill="none" stroke="#541019" stroke-width="9" opacity=".65"/><path id="a90RpmProgress" d="M200 264 L200 264" fill="none" stroke="#f22939" stroke-width="12" stroke-linecap="butt" style="filter:drop-shadow(0 0 3px rgba(242,41,57,.5))"/><g id="a90Needle" transform="rotate(0 200 190)"><line x1="200" y1="190" x2="200" y2="298" stroke="#25080e" stroke-width="8" stroke-linecap="round"/><line x1="200" y1="190" x2="200" y2="298" stroke="#ff3446" stroke-width="4" stroke-linecap="round"/><path d="M197 199 L200 292 L203 199 Z" fill="#ff5864" opacity=".85"/></g><circle cx="200" cy="190" r="7" fill="#e83442" stroke="#080d12" stroke-width="3"/><text x="200" y="344" text-anchor="middle" fill="#6e7b88" font-size="8" letter-spacing="2" font-family="JetBrains Mono,monospace">x 1000 RPM</text></svg>
+      <div class="a90-tach-center">
+        <span class="a90-center-kicker">INSTALLED SOFTWARE</span>
+        <strong id="a90InstalledVersion">NOT SET</strong>
+        <span class="a90-center-label">ANDROID AUTO</span>
+      </div>
+      
+    </div>
+    <div class="a90-side a90-right">
+      <div class="a90-side-heading"><span class="a90-amberline"></span>LATEST TESTING</div>
+      <div id="latestDevTag" class="a90-version">v1.9.35</div>
+      <div id="latestDevName" class="a90-name">USB Beta Build</div>
+      <div id="latestDevDate" class="a90-date">Nov 7, 2026</div>
+      <button id="markDevInstalledBtn" type="button" class="a90-action">SET INSTALLED <span aria-hidden="true">↗</span></button>
+    </div>
+  </div>
+  
+</section>
+    <div id="dataSourceBanner" class="data-banner" role="status" aria-live="polite" hidden></div>
+
+
+    <div class="section-caption">Your vehicle</div>
+    <!-- Vehicle Installed Version Selector & Live Delta Comparison -->
+    <section id="statusBanner" class="cockpit-tile accent-bar-neutral p-4 space-y-3">
+      <div class="flex items-center justify-between gap-2">
+        <h2 class="font-cluster text-sm font-bold uppercase tracking-wide">Installed Version on Car</h2>
+        <span id="statusBadgePill" class="font-telemetry text-[10px] font-bold uppercase px-2 py-0.5 rounded pill-gr">
+          SELECT VERSION
+        </span>
+      </div>
+
+      <!-- Selector Controls -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+        <select id="versionSelectDropdown" aria-label="Select installed version from list" class="recessed-well w-full h-9 px-2.5 text-xs font-telemetry text- inherit focus:outline-none">
+          <option value="">-- Choose installed version --</option>
+        </select>
+
+        <div class="flex gap-1.5">
+          <input id="installedVersionInput" type="text" placeholder="Or type version (e.g. v1.8.72)" class="recessed-well flex-1 h-9 px-2.5 text-xs font-telemetry min-w-0 focus:outline-none" />
+          <button id="saveInstalledBtn" type="button" class="btn-cockpit h-9 px-3.5 text-xs font-cluster uppercase">Set</button>
+        </div>
+      </div>
+
+      <!-- Diagnostic Comparison Readout -->
+      <div class="pt-1">
+        <div id="statusTitle" class="font-cluster text-sm font-bold">No Baseline Version Selected</div>
+        <p id="statusSubtitle" class="text-xs text-sub-color leading-relaxed mt-0.5">
+          Select or enter the version currently installed on your Supra to calculate how many versions behind you are and see all changes.
+        </p>
+      </div>
+
+      <!-- Cumulative Changelog Delta (Automatically expands when behind by 1, 2, or more versions) -->
+      <div id="missedChangesBox" class="hidden recessed-well p-3 space-y-1.5">
+        <div id="missedChangesHeader" class="font-cluster text-[11px] font-bold uppercase tracking-wider text-amber-400">
+          Cumulative Updates Since Your Version:
+        </div>
+        <ul id="missedChangesList" class="text-xs space-y-1.5 list-disc list-inside leading-relaxed">
+        </ul>
+      </div>
+    </section>
+
+    <div class="section-caption">Release history <span class="sort-helper">NEWEST FIRST</span> <span id="releaseCount" class="font-telemetry text-[10px] text-dim-color normal-case tracking-normal"></span></div>
+    <input id="releaseSearch" class="release-search" type="search" placeholder="Search versions, changes, or release notes" aria-label="Search releases" autocomplete="off" />
+    <!-- Channel Filter & Quick Links Bar -->
+    <div class="flex flex-wrap items-center justify-between gap-2 pt-0.5">
+      <div class="flex items-center gap-1 recessed-well p-1">
+        <button id="filterAllBtn" type="button" class="px-3 py-1.5 rounded-lg text-xs font-cluster uppercase font-bold btn-gr-action">All</button>
+        <button id="filterStableBtn" type="button" class="px-3 py-1.5 rounded-lg text-xs font-cluster uppercase font-semibold text-sub-color">Stable</button>
+        <button id="filterDevBtn" type="button" class="px-3 py-1.5 rounded-lg text-xs font-cluster uppercase font-semibold text-sub-color">Testing</button>
+      </div>
+
+      <div class="flex items-center gap-1.5">
+        <button id="shareSummaryBtn" type="button" class="btn-cockpit h-8 px-3 text-xs font-cluster uppercase flex items-center gap-1.5">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+          </svg>
+          <span id="shareBtnLabel">Share</span>
+        </button>
+
+        <a href="https://github.com/Sq00ky/Supra-iDrive6-Android-Auto/releases" target="_blank" rel="noopener noreferrer" class="btn-cockpit h-8 px-3 text-xs font-cluster uppercase flex items-center gap-1 no-underline">
+          <span>GitHub</span>
+          <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+          </svg>
+        </a>
+      </div>
+    </div>
+
+    <!-- Release Telemetry Feed -->
+    <section id="releasesList" class="space-y-2.5">
+      <!-- Dynamically populated -->
+    </section>
+    <footer class="footer-note">Community release monitor · Data provided by GitHub · Not affiliated with Toyota or Gazoo Racing.<br>Always review release notes before installing software in your vehicle.</footer>
+
+  </main>
+
+
+  <dialog id="installDialog" class="install-dialog" aria-labelledby="installHeading">
+    <button id="closeInstallDialog" type="button" class="dialog-close" aria-label="Close install help">✕</button>
+    <h2 id="installHeading">ADD SUPRA AA</h2>
+    <div id="installInstructions"></div>
+  </dialog>
+  <script>
+    // Verified baseline releases (automatically merged with live GitHub API data)
+    const FALLBACK_RELEASES = [
+      {
+        id: 101,
+        tag_name: "wifitoggle",
+        version_id: "v1.9.35-wifisel",
+        name: "v1.9.35-wifisel / rhmiapp-42-wifi",
+        prerelease: false,
+        published_at: "2026-11-07T14:00:00Z",
+        html_url: "https://github.com/Sq00ky/Supra-iDrive6-Android-Auto/releases/tag/wifitoggle",
+        channel: "dev",
+        cleanSummary: "Adds an experimental 'Android Auto over USB (beta)' checkbox to the iDrive Settings page.",
+        body: "wifitoggle rhmiapp: Android Auto over USB (beta) checkbox on the Settings page"
+      },
+      {
+        id: 100,
+        tag_name: "v1.9.33",
+        version_id: "v1.9.33",
+        name: "v1.9.33 (Stable - TurboCode Release)",
+        prerelease: false,
+        published_at: "2026-11-07T02:00:00Z",
+        html_url: "https://github.com/Sq00ky/Supra-iDrive6-Android-Auto/releases",
+        channel: "stable",
+        cleanSummary: "Recommended Stable build distributed by TurboCode Installer. Combines 30FPS pacing, resolution fixes, car-to-phone GPS forwarding, and unified Settings menu.",
+        body: "Stable release deployed via TurboCode NBTEvo Android Auto Installer (v1.9.33). Includes 30FPS resolution fixes, GPS passthrough, and unified settings menu."
+      },
+      {
+        id: 99,
+        tag_name: "fps",
+        version_id: "v1.9.32",
+        name: "Frame Counter - v1.9.32",
+        prerelease: false,
+        published_at: "2026-11-06T12:27:00Z",
+        html_url: "https://github.com/Sq00ky/Supra-iDrive6-Android-Auto/releases/tag/fps",
+        channel: "stable",
+        cleanSummary: "Resolution fixes, locked 30FPS frame pacing, and increased default NBT_RX_TIMEOUT_S timeout.",
+        body: "Merge pull request #66 from ryanriccio1/resolution-options: Resolution Fixes, 30FPS, bump NBT_RX_TIMEOUT_S default"
+      },
+      {
+        id: 98,
+        tag_name: "settings-menu",
+        version_id: "v1.9.28",
+        name: "Settings Menu & Rail Hiding - v1.9.28",
+        prerelease: false,
+        published_at: "2026-11-06T09:15:00Z",
+        html_url: "https://github.com/Sq00ky/Supra-iDrive6-Android-Auto/releases/tag/settings-menu",
+        channel: "stable",
+        cleanSummary: "Sensor cleanup, USB recovery fixes, consolidated Settings menu, and flag to hide side status rail (Clock/Cell/Volume).",
+        body: "Sensors cleanup in #80. Consolidate protobuf readers/writers in #90. Edge case USB recovery fixes in #91. Settings consolidated under menu. New env flag to hide Clock/Cell Signal/Volume."
+      },
+      {
+        id: 97,
+        tag_name: "winmgr",
+        version_id: "v1.9.20",
+        name: "[TESTING] Android Auto on Dedicated Layer - v1.9.20",
+        prerelease: true,
+        published_at: "2026-11-05T19:00:00Z",
+        html_url: "https://github.com/Sq00ky/Supra-iDrive6-Android-Auto/releases/tag/winmgr",
+        channel: "dev",
+        cleanSummary: "Moves Android Auto projection from screen layer 1280 to 1282 to prevent leftover UI artifacts.",
+        body: "This release aims to move Android Auto off of screen 1280 and onto 1282. Goal is to further prevent any artifacts left over by Android Auto."
+      },
+      {
+        id: 96,
+        tag_name: "cc-pf",
+        version_id: "v1.9.19",
+        name: "[UNSTABLE] CC & PF Util - v1.9.19 / rhmiapp-37",
+        prerelease: true,
+        published_at: "2026-11-05T14:20:00Z",
+        html_url: "https://github.com/Sq00ky/Supra-iDrive6-Android-Auto/releases/tag/cc-pf",
+        channel: "dev",
+        cleanSummary: "Updates packet filter utility (pf_aa --install / --check / --uninstall) and Check Control handling.",
+        body: "cc-pf tools: nbt-pf becomes pf_aa --install / --check / --uninstall"
+      },
+      {
+        id: 95,
+        tag_name: "volsliderfixforreal",
+        version_id: "v1.9.18",
+        name: "[STABLE] Volume Slider Fix - v1.9.18",
+        prerelease: false,
+        published_at: "2026-11-05T11:14:00Z",
+        html_url: "https://github.com/Sq00ky/Supra-iDrive6-Android-Auto/releases/tag/volsliderfixforreal",
+        channel: "stable",
+        cleanSummary: "Fixes volume slider overlay behavior and adds BMW 2 Series compatibility entry.",
+        body: "Volume Slider Fix. Merge pull request #106: Add BMW 2 Series entry to requirements."
+      },
+      {
+        id: 94,
+        tag_name: "usbsupp",
+        version_id: "v1.8.72",
+        name: "USB Support - v1.8.72",
+        prerelease: false,
+        published_at: "2026-11-04T12:27:00Z",
+        html_url: "https://github.com/Sq00ky/Supra-iDrive6-Android-Auto/releases/tag/usbsupp",
+        channel: "stable",
+        cleanSummary: "Initial USB transport support (NBT_USB=1 and NBT_USB_DIRECT=1) and HUD turn-by-turn groundwork.",
+        body: "Tested with NBT_USB=1 and NBT_USB_DIRECT=1."
+      }
+    ];
+
+    let allReleases = [...FALLBACK_RELEASES];
+    let currentFilter = "all";
+    let installedVersion = "";
+    let currentTheme = "dark";
+
+    try {
+      const savedVer = localStorage.getItem("supra_aa_installed_version_v2");
+      if (savedVer !== null) {
+        installedVersion = savedVer;
+      }
+      const savedTheme = localStorage.getItem("supra_aa_theme");
+      if (savedTheme === "light" || savedTheme === "dark") {
+        currentTheme = savedTheme;
+      }
+    } catch (e) {}
+
+    function applyTheme(theme) {
+      currentTheme = theme;
+      document.documentElement.setAttribute("data-theme", theme);
+      const sun = document.getElementById("themeIconSun");
+      const moon = document.getElementById("themeIconMoon");
+      const label = document.getElementById("themeModeLabel");
+      const metaTheme = document.getElementById("metaThemeColor");
+      if (theme === "light") {
+        sun.classList.remove("hidden");
+        moon.classList.add("hidden");
+        label.textContent = "Light Mode";
+        document.getElementById("themeToggleBtn").setAttribute("aria-label", "Switch to Dark Mode");
+        if (metaTheme) metaTheme.setAttribute("content", "#edf0f2");
+      } else {
+        sun.classList.add("hidden");
+        moon.classList.remove("hidden");
+        label.textContent = "Dark Mode";
+        document.getElementById("themeToggleBtn").setAttribute("aria-label", "Switch to Light Mode");
+        if (metaTheme) metaTheme.setAttribute("content", "#0b0e12");
+      }
+      try {
+        localStorage.setItem("supra_aa_theme", theme);
+      } catch (e) {}
+    }
+
+    function extractVersionNumber(str) {
+      if (!str) return "";
+      const match = str.match(/v?\d+\.\d+\.\d+(?:-[a-zA-Z0-9._-]+)?/i);
+      if (match) {
+        return match[0].toLowerCase().startsWith("v") ? match[0] : "v" + match[0];
+      }
+      return str.trim();
+    }
+
+    function parseSemverTuple(verStr) {
+      if (!verStr) return null;
+      const m = verStr.match(/(\d+)\.(\d+)\.(\d+)/);
+      if (!m) return null;
+      return [parseInt(m[1], 10), parseInt(m[2], 10), parseInt(m[3], 10)];
+    }
+
+    function compareSemver(aStr, bStr) {
+      const a = parseSemverTuple(aStr);
+      const b = parseSemverTuple(bStr);
+      if (!a || !b) return 0;
+      for (let i = 0; i < 3; i++) {
+        if (a[i] > b[i]) return 1;
+        if (a[i] < b[i]) return -1;
+      }
+      return 0;
+    }
+
+    // GitHub's prerelease=false does not necessarily mean a build is production-ready.
+    // Explicit debug, experimental and testing markers override that flag.
+    function classifyRelease(rel) {
+      const title = [rel.name, rel.tag_name, rel.body || ""].join(" ").toLowerCase();
+      const tag = (rel.tag_name || "").toLowerCase();
+      if (rel.channel === "dev" || rel.prerelease ||
+          /\b(debug|testing|unstable|experimental|alpha|beta|nightly|snapshot|dev build)\b/.test(title) ||
+          /(?:^|[-_])(debug|test|dev|beta|alpha)(?:$|[-_])/.test(tag) ||
+          /wifisel|wifitoggle|bt[s]?pp/.test(title)) return "dev";
+      if (rel.channel === "stable" || /\[stable\]|stable release|turbocode installer/i.test(title)) return "stable";
+      // For otherwise unlabelled GitHub releases, trust the GitHub production flag
+      // only when a conventional version number is present.
+      if (rel.prerelease === false && /v?\d+\.\d+\.\d+/.test([rel.name,rel.tag_name].join(" "))) return "stable";
+      return "dev";
+    }
+
+    function getReleaseVersionId(rel) {
+      if (rel.version_id) return rel.version_id;
+      return extractVersionNumber(rel.name || rel.tag_name);
+    }
+
+    function formatDate(isoStr) {
+      if (!isoStr) return "";
+      const d = new Date(isoStr);
+      if (isNaN(d.getTime())) return isoStr;
+      return d.toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric"
+      });
+    }
+
+    function summarizeRelease(rel) {
+      if (rel.cleanSummary) return rel.cleanSummary;
+      const text = ((rel.name || "") + " " + (rel.body || "")).toLowerCase();
+      const highlights = [];
+      if (text.includes("usb")) highlights.push("USB connectivity improvements");
+      if (text.includes("fps") || text.includes("resolution")) highlights.push("Resolution & 30FPS pacing fixes");
+      if (text.includes("gps")) highlights.push("Car-to-phone GPS forwarding");
+      if (text.includes("settings") || text.includes("menu")) highlights.push("iDrive Settings menu updates");
+      if (text.includes("volume")) highlights.push("Volume slider fix");
+      if (text.includes("screen") || text.includes("layer")) highlights.push("Display layer / artifact fix");
+      if (highlights.length > 0) {
+        return highlights.join(" • ") + ".";
+      }
+      return (rel.body || "Official release from Sq00ky/Supra-iDrive6-Android-Auto.").split("\n")[0];
+    }
+
+    function populateVersionDropdown() {
+      const select = document.getElementById("versionSelectDropdown");
+      const seen = new Set();
+      let optionsHtml = `<option value="">-- Choose installed version --</option>`;
+
+      sortReleasesNewestFirst(allReleases).forEach(rel => {
+        const ver = getReleaseVersionId(rel);
+        const key = ver.toLowerCase();
+        if (!seen.has(key)) {
+          seen.add(key);
+          const kind = classifyRelease(rel) === "stable" ? "Stable" : "Testing";
+          const selectedAttr = (installedVersion && installedVersion.toLowerCase() === key) ? "selected" : "";
+          optionsHtml += `<option value="${ver}" ${selectedAttr}>${ver} (${kind})</option>`;
+        }
+      });
+
+      if (installedVersion && !seen.has(installedVersion.toLowerCase())) {
+        optionsHtml += `<option value="${installedVersion}" selected>${installedVersion} (Custom)</option>`;
+      }
+
+      select.innerHTML = optionsHtml;
+      document.getElementById("installedVersionInput").value = installedVersion;
+    }
+
+    function setInstalledVersion(newVer) {
+      installedVersion = (newVer || "").trim();
+      try {
+        localStorage.setItem("supra_aa_installed_version_v2", installedVersion);
+      } catch (e) {}
+      populateVersionDropdown();
+      updateDashboard();
+      renderReleases();
+      displayCheckResult();
+    }
+
+    // Visual RPM mapping for version vMAJOR.MINOR.PATCH:
+    // v1.9.33 => 1933 RPM; v2.0.0 => 2000 RPM. Cap at the dial's 7000 RPM.
+    // This is an aesthetic indicator, not a measurement from the vehicle.
+    function versionToDisplayRpm(version) {
+      const parsed = parseSemverTuple(version);
+      if (!parsed) return 0;
+      const [major, minor, patch] = parsed;
+      return Math.max(0, Math.min(7000, major * 1000 + minor * 100 + patch));
+    }
+
+    // Draw the red inner RPM sweep on the SAME arc as the animated needle.
+    // The dial starts at the bottom (0 RPM) and ends at 7,000 RPM.
+    function setTachProgress(angle) {
+      const arc = document.getElementById("a90RpmProgress");
+      if (!arc) return;
+      const a = Math.max(0, Math.min(242, Number(angle) || 0));
+      const radius = 74, cx = 200, cy = 190;
+      const point = deg => {
+        const rad = (90 + deg) * Math.PI / 180;
+        return [cx + radius * Math.cos(rad), cy + radius * Math.sin(rad)];
+      };
+      const [x0, y0] = point(0);
+      // An empty arc is preferable to a 360-degree circle at 0 RPM.
+      if (a < 0.01) {
+        arc.setAttribute("d", `M${x0.toFixed(3)} ${y0.toFixed(3)} l0 0`);
+        return;
+      }
+      // Stop just short of the needle centerline so the red fill never protrudes past it.
+      const [x1, y1] = point(Math.max(0, a - 0.4));
+      arc.setAttribute("d", `M${x0.toFixed(3)} ${y0.toFixed(3)} A${radius} ${radius} 0 ${a > 180 ? 1 : 0} 1 ${x1.toFixed(3)} ${y1.toFixed(3)}`);
+    }
+
+    // Needle maps 0..7000 to the dial's 0..7 sweep (242 degrees).
+    // A brief spring-like overshoot makes even small version changes visible.
+    let needleAngle = null;
+    let needleFrame = null;
+    let needleTarget = null;
+    function setTachNeedle(version) {
+      const group = document.getElementById("a90Needle");
+      if (!group) return;
+      const target = (versionToDisplayRpm(version) / 7000) * 242;
+      if (needleTarget !== null && Math.abs(needleTarget - target) < 0.001) return;
+      needleTarget = target;
+      if (needleFrame !== null) {
+        cancelAnimationFrame(needleFrame);
+        needleFrame = null;
+      }
+      const reducedMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      if (needleAngle === null || reducedMotion) {
+        needleAngle = target;
+        group.setAttribute("transform", `rotate(${target.toFixed(3)} 200 190)`);
+        setTachProgress(target);
+        return;
+      }
+      const from = needleAngle;
+      const delta = target - from;
+      // A minimum mechanical kick, even when two adjacent builds map within ~1 degree.
+      const direction = Math.sign(delta) || 1;
+      const kick = Math.max(5, Math.min(11, Math.abs(delta) * 0.11));
+      const duration = 820;
+      const started = performance.now();
+      const animate = now => {
+        const t = Math.min(1, (now - started) / duration);
+        // Ease to the target, overshoot, then settle back smoothly.
+        const approach = 1 - Math.pow(1 - t, 3);
+        const wobble = direction * kick * Math.sin(t * Math.PI * 3) * Math.pow(1 - t, 2);
+        needleAngle = Math.max(0, Math.min(242, from + delta * approach + wobble));
+        group.setAttribute("transform", `rotate(${needleAngle.toFixed(3)} 200 190)`);
+        setTachProgress(needleAngle);
+        if (t < 1) needleFrame = requestAnimationFrame(animate);
+        else {
+          needleAngle = target;
+          needleFrame = null;
+          group.setAttribute("transform", `rotate(${target.toFixed(3)} 200 190)`);
+          setTachProgress(target);
+        }
+      };
+      needleFrame = requestAnimationFrame(animate);
+    }
+
+    function cumulativeReleaseItem(release) {
+      const version = escapeHtml(getReleaseVersionId(release));
+      const stable = classifyRelease(release) === "stable";
+      const channel = stable ? "STABLE" : "TESTING";
+      const pillClass = stable ? "pill-ok" : "pill-warn";
+      const date = release.published_at ? `<span class="cumulative-date">${escapeHtml(formatDate(release.published_at))}</span>` : "";
+      return `<li><span class="cumulative-entry-heading"><strong class="font-telemetry">${version}</strong><span class="cumulative-channel ${pillClass}">${channel}</span>${date}</span><span class="cumulative-summary">${escapeHtml(summarizeRelease(release))}</span></li>`;
+    }
+
+    // Use the release's publication time for relative ordering when both builds
+    // exist in the fetched release list. Debug tags may not contain a semver.
+    function findInstalledRelease() {
+      const key = installedVersion.trim().toLowerCase();
+      return allReleases.find(r => getReleaseVersionId(r).toLowerCase() === key) || null;
+    }
+    function releaseIsAfter(a, b) {
+      const ta = releaseTimestamp(a), tb = releaseTimestamp(b);
+      if (Number.isFinite(ta) && Number.isFinite(tb) && ta !== -Infinity && tb !== -Infinity)
+        return ta > tb;
+      const av = parseSemverTuple(getReleaseVersionId(a));
+      const bv = parseSemverTuple(getReleaseVersionId(b));
+      return av && bv ? compareSemver(getReleaseVersionId(a), getReleaseVersionId(b)) > 0 : false;
+    }
+    function updateDashboard() {
+      document.getElementById("a90InstalledVersion").textContent = installedVersion || "NOT SET";
+      setTachNeedle(installedVersion);
+      const stableList = sortReleasesNewestFirst(allReleases.filter(r => classifyRelease(r) === "stable"));
+      const devList = sortReleasesNewestFirst(allReleases.filter(r => classifyRelease(r) === "dev"));
+      const topStable = stableList[0] || null;
+      const topDev = devList[0] || null;
+      const latestStableVer = topStable ? getReleaseVersionId(topStable) : "Not available";
+      const latestDevVer = topDev ? getReleaseVersionId(topDev) : "Not available";
+      for (const [kind, top] of [["Stable",topStable],["Dev",topDev]]) {
+        document.getElementById("latest"+kind+"Tag").textContent = top ? getReleaseVersionId(top) : "—";
+        document.getElementById("latest"+kind+"Name").textContent = top ? top.name || top.tag_name : "No release found";
+        document.getElementById("latest"+kind+"Date").textContent = top ? formatDate(top.published_at) : "";
+      }
+      const banner = document.getElementById("statusBanner");
+      const pill = document.getElementById("statusBadgePill");
+      const title = document.getElementById("statusTitle");
+      const subtitle = document.getElementById("statusSubtitle");
+      const missedBox = document.getElementById("missedChangesBox");
+      const missedHeader = document.getElementById("missedChangesHeader");
+      const missedList = document.getElementById("missedChangesList");
+      const showStatus = (tone, label, heading, explanation) => {
+        banner.className = `cockpit-tile accent-bar-${tone} p-4 space-y-3`;
+        pill.className = `font-telemetry text-[10px] font-bold uppercase px-2 py-0.5 rounded ${tone === "ok" ? "pill-ok" : tone === "warn" ? "pill-warn" : "pill-gr"}`;
+        pill.textContent = label;
+        title.textContent = heading;
+        subtitle.textContent = explanation;
+      };
+      missedBox.classList.add("hidden");
+      if (!installedVersion) {
+        showStatus("neutral", "SELECT VERSION", "No Installed Version Selected",
+          `Latest stable: ${latestStableVer}. Latest testing: ${latestDevVer}. Select the version installed on your car.`);
+        return;
+      }
+      const selected = findInstalledRelease();
+      if (!selected) {
+        // A typed version not present in the API cannot be verified as stable.
+        // Avoid treating missing semver as equal to the latest stable release.
+        const parsed = parseSemverTuple(installedVersion);
+        const knownStable = topStable && parseSemverTuple(latestStableVer);
+        if (parsed && knownStable && compareSemver(installedVersion, latestStableVer) < 0) {
+          const newerStable = stableList.filter(r => parseSemverTuple(getReleaseVersionId(r)) && compareSemver(getReleaseVersionId(r), installedVersion) > 0);
+          showStatus("warn", "VERSION NOT VERIFIED", `Update may be available: ${installedVersion} → ${latestStableVer}`,
+            "This version isn't in the loaded GitHub releases. Comparison is based only on numeric version numbers, not verified release chronology.");
+          if (newerStable.length) {
+            missedBox.classList.remove("hidden");
+            missedHeader.textContent = `Potential newer stable releases (${newerStable.length}):`;
+            missedList.innerHTML = newerStable.map(cumulativeReleaseItem).join("");
+          }
+        } else {
+          showStatus("neutral", "NOT VERIFIED", `Release not found: ${installedVersion}`,
+            "This version isn't in the loaded GitHub release list. Its channel and update status cannot be confirmed. Try Check Updates.");
+        }
+        return;
+      }
+      const selectedKind = classifyRelease(selected);
+      const selectedLabel = selectedKind === "stable" ? "Stable" : "Testing";
+      const newerStable = stableList.filter(r => releaseIsAfter(r, selected));
+      const newerTesting = devList.filter(r => releaseIsAfter(r, selected));
+      const newerAll = sortReleasesNewestFirst([...newerStable, ...newerTesting]);
+      if (selectedKind === "stable" && newerStable.length === 0) {
+        showStatus("ok", "STABLE CURRENT", `System Up to Date (${installedVersion} Stable)`,
+          newerTesting.length ? `Latest stable release installed. ${newerTesting.length} newer testing release(s) are available, including ${latestDevVer}.` : "Latest known stable release installed.");
+      } else if (newerStable.length) {
+        showStatus("warn", "UPDATE AVAILABLE", `Update Available: ${installedVersion} (${selectedLabel}) → ${latestStableVer}`,
+          `${newerStable.length} newer stable release(s) and ${newerTesting.length} newer testing release(s) published since your selected build.`);
+      } else if (newerTesting.length) {
+        showStatus("warn", "TESTING UPDATE", `Newer Testing Build Available (${installedVersion} ${selectedLabel})`,
+          `${newerTesting.length} newer testing release(s) published after your selected build. Latest known stable: ${latestStableVer}.`);
+      } else if (selectedKind === "dev") {
+        showStatus("ok", "LATEST TESTING", `Latest Known Testing Build (${installedVersion})`,
+          `This is the newest known testing build. Latest stable release: ${latestStableVer}. Testing is not a stable release.`);
+      } else {
+        showStatus("ok", "CURRENT", `Current Release (${installedVersion} ${selectedLabel})`, "No newer releases found in the loaded data.");
+      }
+      if (newerAll.length) {
+        missedBox.classList.remove("hidden");
+        missedHeader.textContent = `Changes published after ${installedVersion} (${newerStable.length} Stable / ${newerTesting.length} Testing):`;
+        missedList.innerHTML = newerAll.map(cumulativeReleaseItem).join("");
+      }
+    }
+
+    function escapeHtml(value) {
+      return String(value ?? "").replace(/[&<>"']/g, c => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c]));
+    }
+    function safeReleaseUrl(url) {
+      try {
+        const parsed = new URL(url);
+        if (parsed.protocol === "https:" && parsed.hostname === "github.com") return parsed.href;
+      } catch (_) {}
+      return "https://github.com/Sq00ky/Supra-iDrive6-Android-Auto/releases";
+    }
+    // GitHub publication timestamp is authoritative for display order. Un-dated entries go last.
+    function releaseTimestamp(release) {
+      const time = Date.parse(release.published_at || release.created_at || "");
+      return Number.isFinite(time) ? time : -Infinity;
+    }
+    function sortReleasesNewestFirst(releases) {
+      return [...releases].sort((a, b) => {
+        const aDate = releaseTimestamp(a), bDate = releaseTimestamp(b);
+        if (aDate !== bDate) return bDate > aDate ? 1 : -1;
+        return compareSemver(getReleaseVersionId(b), getReleaseVersionId(a));
+      });
+    }
+    let releaseSearchTerm = "";
+    function renderReleases() {
+      const container = document.getElementById("releasesList");
+      const filtered = sortReleasesNewestFirst(allReleases).filter(r => {
+        if (currentFilter !== "all" && classifyRelease(r) !== currentFilter) return false;
+        const haystack = [r.name, r.tag_name, getReleaseVersionId(r), r.body, summarizeRelease(r)].join(" ").toLowerCase();
+        return haystack.includes(releaseSearchTerm);
+      });
+
+      document.getElementById("releaseCount").textContent = `${filtered.length} / ${allReleases.length}`;
+      if (filtered.length === 0) {
+        container.innerHTML = `<div class="cockpit-tile p-6 text-center text-xs text-sub-color">No releases match this filter.</div>`;
+        return;
+      }
+
+      container.innerHTML = filtered.map(rel => {
+        const kind = classifyRelease(rel);
+        const isStable = kind === "stable";
+        const ver = getReleaseVersionId(rel);
+        const isInstalled = installedVersion && ver.toLowerCase() === installedVersion.toLowerCase();
+        const baselineRelease = findInstalledRelease();
+        const isNewerThanInstalled = baselineRelease ? releaseIsAfter(rel, baselineRelease) : false;
+        const summary = summarizeRelease(rel);
+        const rawBody = (rel.body || "No additional technical commit notes.").trim();
+
+        return `
+          <article class="cockpit-tile release-card p-4 space-y-2.5 ${isInstalled ? 'accent-bar-ok' : ''}">
+            <div class="flex items-start justify-between gap-2">
+              <div class="min-w-0">
+                <div class="flex flex-wrap items-center gap-1.5">
+                  <span class="font-telemetry font-bold text-base">${escapeHtml(ver)}</span>
+                  ${isStable
+                    ? `<span class="font-telemetry text-[10px] font-bold px-2 py-0.5 rounded pill-ok">STABLE</span>`
+                    : `<span class="font-telemetry text-[10px] font-bold px-2 py-0.5 rounded pill-warn">TESTING</span>`
+                  }
+                  ${isInstalled
+                    ? `<span class="font-telemetry text-[10px] font-bold px-2 py-0.5 rounded pill-gr">INSTALLED</span>`
+                    : isNewerThanInstalled
+                      ? `<span class="font-telemetry text-[10px] font-bold px-2 py-0.5 rounded recessed-well text-amber-400">NEWER</span>`
+                      : ``
+                  }
+                </div>
+                <div class="text-xs text-sub-color truncate mt-0.5">${escapeHtml(rel.name || rel.tag_name)}</div>
+                <div class="font-telemetry text-[10px] text-dim-color mt-0.5">
+                  Tag: ${escapeHtml(rel.tag_name)} • ${escapeHtml(formatDate(rel.published_at))}
+                </div>
+              </div>
+
+              <div class="flex items-center gap-1.5 shrink-0">
+                ${!isInstalled
+                  ? `<button type="button" data-set-version="${escapeHtml(ver)}" class="btn-cockpit h-7 px-2.5 text-[11px] font-cluster uppercase">Set Mine</button>`
+                  : ``
+                }
+                <a href="${escapeHtml(safeReleaseUrl(rel.html_url))}" target="_blank" rel="noopener noreferrer" class="btn-cockpit h-7 px-2.5 text-[11px] font-cluster uppercase flex items-center no-underline">
+                  GitHub ↗
+                </a>
+              </div>
+            </div>
+
+            <div class="recessed-well p-3 space-y-1.5">
+              <p class="text-xs leading-relaxed">${escapeHtml(summary)}</p>
+              <details class="text-[11px] text-sub-color pt-1 border-t border-tile-color">
+                <summary class="cursor-pointer font-telemetry text-[10px] text-dim-color select-none">Raw Release Notes</summary>
+                <p class="font-telemetry text-[11px] text-sub-color whitespace-pre-line mt-1.5">${escapeHtml(rawBody)}</p>
+              </details>
+            </div>
+          </article>
+        `;
+      }).join("");
+
+      container.querySelectorAll("[data-set-version]").forEach(btn => {
+        btn.addEventListener("click", () => {
+          setInstalledVersion(btn.getAttribute("data-set-version"));
+        });
+      });
+    }
+
+    function displayCheckResult() {
+      const box = document.getElementById("checkResultSummary");
+      const title = document.getElementById("statusTitle");
+      const subtitle = document.getElementById("statusSubtitle");
+      if (!box || !title || !subtitle) return;
+      document.getElementById("checkResultTitle").textContent = title.textContent;
+      document.getElementById("checkResultSubtitle").textContent = subtitle.textContent;
+      // Status line stays mounted and stable to avoid page jumps.
+    }
+
+    function formatCheckedAt(date) {
+      return new Intl.DateTimeFormat("en-US", { month:"short", day:"numeric", year:"numeric", hour:"numeric", minute:"2-digit" }).format(date);
+    }
+    function showSyncState(state, checkedAt) {
+      const badge = document.getElementById("lastCheckedBadge");
+      const label = document.getElementById("syncStatusLabel");
+      const dot = document.getElementById("syncStatusDot");
+      const banner = document.getElementById("dataSourceBanner");
+      badge.dataset.state = state;
+      dot.dataset.state = state;
+      if (state === "loading") {
+        label.textContent = "CHECKING GITHUB";
+        badge.textContent = checkedAt ? `Last success: ${formatCheckedAt(checkedAt)}` : "Connecting...";
+        banner.hidden = true;
+      } else if (state === "success") {
+        label.textContent = "GITHUB CHECK COMPLETE";
+        badge.textContent = `Last checked: ${formatCheckedAt(checkedAt)}`;
+        banner.hidden = true;
+      } else if (state === "error") {
+        label.textContent = "CHECK FAILED";
+        badge.textContent = checkedAt ? `Last success: ${formatCheckedAt(checkedAt)}` : "No successful check yet";
+        banner.hidden = false;
+        banner.dataset.state = "error";
+        banner.textContent = "GitHub could not be reached. Showing bundled reference releases, which may be outdated. The time above is the last successful online check, not a live sync.";
+      } else {
+        label.textContent = "NOT CHECKED";
+        badge.textContent = "Last checked: Never";
+        banner.hidden = true;
+      }
+    }
+    let lastSuccessfulCheck = null;
+    try {
+      const saved = localStorage.getItem("supra_aa_last_successful_check");
+      if (saved && !isNaN(new Date(saved).getTime())) lastSuccessfulCheck = new Date(saved);
+    } catch (_) {}
+    async function fetchLiveGitHubReleases() {
+      const btn = document.getElementById("refreshBtn");
+      const icon = document.getElementById("refreshIcon");
+      btn.disabled = true;
+      icon.classList.add("animate-spin");
+      showSyncState("loading", lastSuccessfulCheck);
+      // Preserve the header layout while checking; never collapse its status row.
+
+      try {
+        const res = await fetch("https://api.github.com/repos/Sq00ky/Supra-iDrive6-Android-Auto/releases?per_page=15", {
+          headers: { "Accept": "application/vnd.github+json" }
+        });
+        if (!res.ok) throw new Error("GitHub API status " + res.status);
+        const data = await res.json();
+
+        if (!Array.isArray(data) || data.length === 0) throw new Error("No releases returned");
+        if (Array.isArray(data) && data.length > 0) {
+          const has1933 = data.some(r => ((r.name || "") + (r.tag_name || "")).includes("1.9.33"));
+          const merged = [...data];
+          if (!has1933) {
+            merged.splice(1, 0, FALLBACK_RELEASES[1]);
+          }
+          allReleases = merged;
+          lastSuccessfulCheck = new Date();
+          try { localStorage.setItem("supra_aa_last_successful_check", lastSuccessfulCheck.toISOString()); } catch (_) {}
+          showSyncState("success", lastSuccessfulCheck);
+        }
+      } catch (err) {
+        allReleases = [...FALLBACK_RELEASES];
+        showSyncState("error", lastSuccessfulCheck);
+      } finally {
+        populateVersionDropdown();
+        updateDashboard();
+        renderReleases();
+        // Report the car's actual comparison status in the refresh area,
+        // not just that the GitHub request succeeded.
+        displayCheckResult();
+        btn.disabled = false;
+        icon.classList.remove("animate-spin");
+      }
+    }
+
+    document.getElementById("themeToggleBtn").addEventListener("click", () => {
+      applyTheme(currentTheme === "dark" ? "light" : "dark");
+    });
+
+    document.getElementById("refreshBtn").addEventListener("click", fetchLiveGitHubReleases);
+    document.getElementById("releaseSearch").addEventListener("input", (e) => {
+      releaseSearchTerm = e.target.value.trim().toLowerCase();
+      renderReleases();
+    });
+
+    document.getElementById("versionSelectDropdown").addEventListener("change", (e) => {
+      setInstalledVersion(e.target.value);
+    });
+
+    document.getElementById("saveInstalledBtn").addEventListener("click", () => {
+      const val = document.getElementById("installedVersionInput").value.trim();
+      setInstalledVersion(val);
+    });
+
+    document.getElementById("installedVersionInput").addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        setInstalledVersion(e.target.value.trim());
+      }
+    });
+
+    document.getElementById("markStableInstalledBtn").addEventListener("click", () => {
+      setInstalledVersion(document.getElementById("latestStableTag").textContent.trim());
+    });
+
+    document.getElementById("markDevInstalledBtn").addEventListener("click", () => {
+      setInstalledVersion(document.getElementById("latestDevTag").textContent.trim());
+    });
+
+    function setFilter(filterName) {
+      currentFilter = filterName;
+      const buttons = {
+        all: document.getElementById("filterAllBtn"),
+        stable: document.getElementById("filterStableBtn"),
+        dev: document.getElementById("filterDevBtn")
+      };
+      Object.keys(buttons).forEach(key => {
+        if (key === filterName) {
+          buttons[key].className = "px-3 py-1.5 rounded-lg text-xs font-cluster uppercase font-bold btn-gr-action";
+        } else {
+          buttons[key].className = "px-3 py-1.5 rounded-lg text-xs font-cluster uppercase font-semibold text-sub-color";
+        }
+      });
+      renderReleases();
+    }
+
+    document.getElementById("filterAllBtn").addEventListener("click", () => setFilter("all"));
+    document.getElementById("filterStableBtn").addEventListener("click", () => setFilter("stable"));
+    document.getElementById("filterDevBtn").addEventListener("click", () => setFilter("dev"));
+
+    document.getElementById("shareSummaryBtn").addEventListener("click", async () => {
+      const stableVer = document.getElementById("latestStableTag").textContent;
+      const devVer = document.getElementById("latestDevTag").textContent;
+      const myVer = installedVersion ? `My Car: ${installedVersion}\n` : "";
+      const shareText = `GR Supra Android Auto (NBT-AAD) Releases:\n${myVer}• Latest Stable: ${stableVer}\n• Latest Dev: ${devVer}\nhttps://github.com/Sq00ky/Supra-iDrive6-Android-Auto/releases`;
+      const label = document.getElementById("shareBtnLabel");
+
+      if (navigator.share) {
+        try {
+          await navigator.share({ title: "Supra AA Release Monitor", text: shareText, url: "https://github.com/Sq00ky/Supra-iDrive6-Android-Auto/releases" });
+          return;
+        } catch (e) {}
+      }
+
+      try {
+        await navigator.clipboard.writeText(shareText);
+      } catch (e) {
+        const ta = document.createElement("textarea");
+        ta.value = shareText;
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand("copy");
+        document.body.removeChild(ta);
+      }
+      label.textContent = "Copied!";
+      setTimeout(() => { label.textContent = "Share"; }, 2000);
+    });
+
+
+    // PWA installation when browser supports it; actionable OS-specific guidance otherwise.
+    let deferredInstallPrompt = null;
+    window.addEventListener('beforeinstallprompt', (event) => {
+      event.preventDefault();
+      deferredInstallPrompt = event;
+    });
+    window.addEventListener('appinstalled', () => { deferredInstallPrompt = null; });
+    function openInstallHelp() {
+      const dlg = document.getElementById('installDialog');
+      const info = document.getElementById('installInstructions');
+      const ua = navigator.userAgent || '';
+      const appleMobile = /iPhone|iPad|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+      const android = /Android/i.test(ua);
+      const standalone = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+      const local = location.protocol === 'file:';
+      if (standalone) {
+        info.innerHTML = '<p><strong>Already installed.</strong> You are opening Supra AA as an app.</p>';
+      } else if (local) {
+        info.innerHTML = '<p><strong>This is a local HTML file.</strong> To install the app on your phone with a permanent icon, upload the supplied website package to an HTTPS website and open that URL in your phone browser.</p><p>On a computer, you can create a shortcut to this HTML file now. For automatic app installation, use the HTTPS version.</p><p class="hint">A button inside an HTML file cannot silently add itself to your desktop or phone home screen.</p>';
+      } else if (appleMobile) {
+        info.innerHTML = '<p>In <strong>Safari</strong>, tap <strong>Share</strong> (square with arrow), choose <strong>Add to Home Screen</strong>, then tap <strong>Add</strong>.</p><p class="hint">If you use a different browser, open this page in Safari first.</p>';
+      } else if (android) {
+        info.innerHTML = '<p>In <strong>Chrome</strong>, open the <strong>⋮</strong> menu and choose <strong>Install app</strong> or <strong>Add to Home screen</strong>, then confirm.</p>';
+      } else {
+        info.innerHTML = '<p>In <strong>Chrome or Edge</strong>, open the browser menu and choose <strong>Install Supra AA</strong> or <strong>Apps → Install this site as an app</strong>.</p><p>For a regular shortcut instead, use the browser menu option to <strong>Create shortcut</strong> (when available), or drag the address-bar site icon to your desktop.</p>';
+      }
+      if (!dlg.open) dlg.showModal();
+    }
+    document.getElementById('installAppBtn').addEventListener('click', async () => {
+      if (deferredInstallPrompt) {
+        const prompt = deferredInstallPrompt;
+        deferredInstallPrompt = null;
+        try { await prompt.prompt(); await prompt.userChoice; } catch(e) { openInstallHelp(); }
+      } else { openInstallHelp(); }
+    });
+    document.getElementById('closeInstallDialog').addEventListener('click', () => document.getElementById('installDialog').close());
+    document.getElementById('installDialog').addEventListener('click', e => {if(e.target === e.currentTarget)e.currentTarget.close();});
+    if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) {
+      window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(() => {}));
+    }
+
+    // Boot
+    applyTheme(currentTheme);
+    showSyncState(lastSuccessfulCheck ? "loading" : "idle", lastSuccessfulCheck);
+    populateVersionDropdown();
+    updateDashboard();
+    renderReleases();
+    displayCheckResult();
+    fetchLiveGitHubReleases();
+  </script>
+</body>
+</html>
