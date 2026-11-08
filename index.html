@@ -559,7 +559,7 @@
     .install-nudge .nudge-yes{background:var(--gr-red);color:white;border-color:var(--gr-red);}
 
 
-    /* V13 application update prompt. Overlay avoids header reflow and page jumps. */
+    /* Application update prompt. Overlay avoids header reflow and page jumps. */
     .app-update-banner {position:fixed;left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom, 0px));z-index:110;max-width:490px;margin:0 auto;padding:15px 16px;border:1px solid rgba(239,58,70,.48);border-radius:12px;background:var(--bg-tile);box-shadow:0 12px 45px rgba(0,0,0,.48);color:var(--text-main);}
     .app-update-banner[hidden]{display:none!important;}
     .app-update-banner strong{display:block;font-size:14px;margin-bottom:5px;}
@@ -576,7 +576,7 @@
   <header class="dash-header sticky top-0 z-30">
     <div class="dash-wrap">
       <div class="dash-topline">
-        <div class="dash-brand"><div class="brand-mark" aria-label="GR inspired mark"><span>G</span><span>R</span></div><div><strong>SUPRA <em>AA</em></strong><small>ANDROID AUTO UPDATES <span class="dash-small-divider">/</span> iDRIVE 6 <span class="app-version" title="Supra AA application version">APP V13</span></small></div></div>
+        <div class="dash-brand"><div class="brand-mark" aria-label="GR inspired mark"><span>G</span><span>R</span></div><div><strong>SUPRA <em>AA</em></strong><small>ANDROID AUTO UPDATES <span class="dash-small-divider">/</span> iDRIVE 6 <span class="app-version" title="Supra AA application version">APP 1.4</span></small></div></div>
         <div class="header-actions"><button id="installAppBtn" type="button" class="install-shortcut" title="Add Supra AA to your home screen or desktop" aria-label="Install app or create shortcut"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v12m0 0 4-4m-4 4-4-4M5 17v3h14v-3"/></svg><span class="install-label">Install App</span></button>
         <button id="themeToggleBtn" type="button" title="Switch between Dark Mode and Light Mode" aria-label="Switch to Light Mode" class="theme-switch">
           <svg id="themeIconSun" class="w-4 h-4 hidden" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path stroke-linecap="round" d="M12 2v2m0 16v2M4.93 4.93l1.42 1.42m11.3 11.3 1.42 1.42M2 12h2m16 0h2M4.93 19.07l1.42-1.42m11.3-11.3 1.42-1.42"/></svg>
@@ -653,6 +653,8 @@
           <button id="saveInstalledBtn" type="button" class="btn-cockpit h-9 px-3.5 text-xs font-cluster uppercase">Set</button>
         </div>
       </div>
+
+      <div id="vehicleSaveState" role="status" aria-live="polite" style="font-size:11px;color:var(--text-dim);line-height:1.4;">Checking saved vehicle version…</div>
 
       <!-- Diagnostic Comparison Readout -->
       <div class="pt-1">
@@ -820,16 +822,124 @@
     let installedVersion = "";
     let currentTheme = "dark";
 
+    // Vehicle settings are the highest-priority data in this application.
+    // Keep the legacy storage key for compatibility with V10-V13, and maintain
+    // independent localStorage, IndexedDB, and cookie copies for resilience.
+    const VEHICLE_STORAGE_KEY = "supra_aa_installed_version_v2";
+    const VEHICLE_BACKUP_KEY = "supra_aa_vehicle_backup_v1";
+    const VEHICLE_COOKIE_KEY = "supra_aa_car_version";
+    let userChangedVersionThisSession = false;
+    let vehicleStoreReady = false;
+    function readCookie(name) {
+      try {
+        const match = document.cookie.split('; ').find(x => x.startsWith(name + '='));
+        return match ? decodeURIComponent(match.slice(name.length + 1)) : '';
+      } catch (_) { return ''; }
+    }
+    function writeVehicleCookie(version) {
+      try {
+        if (location.protocol === 'file:') return false;
+        document.cookie = VEHICLE_COOKIE_KEY + '=' + encodeURIComponent(version) +
+          '; Max-Age=31536000; Path=' + new URL('.', location.href).pathname + '; SameSite=Lax; Secure';
+        return readCookie(VEHICLE_COOKIE_KEY) === version;
+      } catch (_) { return false; }
+    }
+    function openVehicleDb() {
+      return new Promise((resolve,reject) => {
+        if (!window.indexedDB) return reject(new Error('IndexedDB unavailable'));
+        const request = indexedDB.open('supra-aa-preferences',1);
+        request.onupgradeneeded = () => {
+          if (!request.result.objectStoreNames.contains('settings')) request.result.createObjectStore('settings');
+        };
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+        request.onblocked = () => reject(new Error('IndexedDB blocked'));
+      });
+    }
+    async function readVehicleDb() {
+      const db = await openVehicleDb();
+      try { return await new Promise((resolve,reject) => {
+        const request=db.transaction('settings','readonly').objectStore('settings').get('vehicleVersion');
+        request.onsuccess=()=>resolve(request.result || ''); request.onerror=()=>reject(request.error);
+      }); } finally { db.close(); }
+    }
+    async function writeVehicleDb(version) {
+      const db = await openVehicleDb();
+      try { await new Promise((resolve,reject) => {
+        const tx=db.transaction('settings','readwrite');
+        tx.objectStore('settings').put(version,'vehicleVersion');
+        tx.oncomplete=resolve; tx.onerror=()=>reject(tx.error); tx.onabort=()=>reject(tx.error);
+      }); return true; } finally { db.close(); }
+    }
+    function readVehicleLocal() {
+      try {
+        const main=localStorage.getItem(VEHICLE_STORAGE_KEY);
+        if (main && main.trim()) return main.trim();
+        const backup=JSON.parse(localStorage.getItem(VEHICLE_BACKUP_KEY) || 'null');
+        return backup && typeof backup.version==='string' ? backup.version.trim() : '';
+      } catch (_) { return ''; }
+    }
+    function saveVehicleLocal(version) {
+      try {
+        localStorage.setItem(VEHICLE_STORAGE_KEY,version);
+        localStorage.setItem(VEHICLE_BACKUP_KEY,JSON.stringify({version, savedAt:new Date().toISOString()}));
+        return localStorage.getItem(VEHICLE_STORAGE_KEY)===version;
+      } catch (_) { return false; }
+    }
+    function showVehicleSaveState(message,problem=false) {
+      const el=document.getElementById('vehicleSaveState');
+      if (!el) return;
+      el.textContent=message;
+      el.style.color=problem ? 'var(--hud-amber)' : 'var(--text-dim)';
+    }
+    // Load the legacy value synchronously before the first dashboard paint.
+    installedVersion = readVehicleLocal() || readCookie(VEHICLE_COOKIE_KEY);
     try {
-      const savedVer = localStorage.getItem("supra_aa_installed_version_v2");
-      if (savedVer !== null) {
-        installedVersion = savedVer;
+      const savedTheme = localStorage.getItem('supra_aa_theme');
+      if (savedTheme === 'light' || savedTheme === 'dark') currentTheme=savedTheme;
+    } catch (_) {}
+    let vehicleSaveGeneration=0;
+    async function persistVehicleVersion(version) {
+      const generation=++vehicleSaveGeneration;
+      const localSaved=saveVehicleLocal(version);
+      const cookieSaved=writeVehicleCookie(version);
+      showVehicleSaveState('Saving installed version…');
+      let dbSaved=false;
+      try { dbSaved=await writeVehicleDb(version); } catch (_) {}
+      if (generation !== vehicleSaveGeneration) return;
+      showVehicleSaveState(localSaved || cookieSaved || dbSaved
+        ? '✓ Installed version saved on this device'
+        : '⚠ Could not save. Check browser storage settings.',
+        !(localSaved || cookieSaved || dbSaved));
+    }
+    async function restoreVehicleVersion() {
+      let dbVersion='';
+      try { dbVersion=await readVehicleDb(); } catch (_) {}
+      // Never overwrite a version selected by the user while storage was loading.
+      if (userChangedVersionThisSession) return;
+      const candidate=readVehicleLocal() || dbVersion || readCookie(VEHICLE_COOKIE_KEY);
+      vehicleStoreReady=true;
+      if (candidate && candidate !== installedVersion) {
+        installedVersion=candidate;
+        populateVersionDropdown(); updateDashboard(); renderReleases(); displayCheckResult();
       }
-      const savedTheme = localStorage.getItem("supra_aa_theme");
-      if (savedTheme === "light" || savedTheme === "dark") {
-        currentTheme = savedTheme;
+      if (candidate) {
+        showVehicleSaveState('✓ Installed version remembered on this device');
+        // Self-heal missing copies after migration, without touching the chosen value.
+        await persistVehicleVersion(candidate);
+      } else {
+        showVehicleSaveState('Choose your car version once. It will be saved automatically.');
       }
-    } catch (e) {}
+      // Ask browser to reduce eviction where supported; never rely on this permission.
+      try { if (navigator.storage && navigator.storage.persist) await navigator.storage.persist(); } catch (_) {}
+    }
+    window.addEventListener('storage',event=>{
+      if(event.key !== VEHICLE_STORAGE_KEY || !event.newValue || userChangedVersionThisSession) return;
+      if(event.newValue !== installedVersion) {
+        installedVersion=event.newValue;
+        populateVersionDropdown(); updateDashboard(); renderReleases(); displayCheckResult();
+      }
+    });
 
     function applyTheme(theme) {
       currentTheme = theme;
@@ -956,10 +1066,19 @@
     }
 
     function setInstalledVersion(newVer) {
-      installedVersion = (newVer || "").trim();
-      try {
-        localStorage.setItem("supra_aa_installed_version_v2", installedVersion);
-      } catch (e) {}
+      const candidate=(newVer || '').trim();
+      // Clicking an empty dropdown option must never silently erase a saved car version.
+      if (!candidate) {
+        populateVersionDropdown();
+        showVehicleSaveState(installedVersion
+          ? 'Your saved car version was kept.'
+          : 'Select a version to save it.');
+        return;
+      }
+      userChangedVersionThisSession=true;
+      installedVersion=candidate;
+      // Persist before rebuilding the release list or making any network request.
+      void persistVehicleVersion(candidate);
       populateVersionDropdown();
       updateDashboard();
       renderReleases();
@@ -1531,9 +1650,9 @@
     });
     document.getElementById('closeInstallDialog').addEventListener('click', () => document.getElementById('installDialog').close());
     document.getElementById('installDialog').addEventListener('click', e => {if(e.target === e.currentTarget)e.currentTarget.close();});
-    // V13: app code updates are independent of Android Auto release checks.
+    // App code updates are independent of Android Auto release checks.
     // Version metadata is fetched from the server, bypassing HTTP and SW caches.
-    const APP_BUILD = 13;
+    const APP_BUILD = 14;
     const APP_CHECK_MIN_INTERVAL_MS = 60 * 1000;
     let lastAppVersionCheck = 0;
     let discoveredAppBuild = null;
@@ -1547,7 +1666,7 @@
     function presentAppUpdate(build, title) {
       if (!Number.isFinite(build) || build <= APP_BUILD) return;
       discoveredAppBuild = build;
-      document.getElementById('appUpdateTitle').textContent = 'Supra AA V' + build + ' is available';
+      document.getElementById('appUpdateTitle').textContent = 'Supra AA ' + (title || ('build ' + build)) + ' is available';
       document.getElementById('appUpdateDescription').textContent = 'Update the app interface without reinstalling. Your installed vehicle version will be preserved.';
       appUpdateBanner.hidden = false;
     }
@@ -1564,7 +1683,7 @@
         if (!response.ok) return;
         const manifest = await response.json();
         const build = Number(manifest.build);
-        presentAppUpdate(build);
+        presentAppUpdate(build, String(manifest.version || ''));
       } catch (error) { /* Offline: retry at next focus or periodic check. */ }
     }
     async function restartIntoLatestApp() {
@@ -1609,6 +1728,8 @@
     updateDashboard();
     renderReleases();
     displayCheckResult();
+    // Restore saved vehicle independently of release fetches and app-cache updates.
+    void restoreVehicleVersion();
     fetchLiveGitHubReleases();
     setTimeout(showOneTimeInstallSuggestion, 3000);
   </script>
