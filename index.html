@@ -576,7 +576,7 @@
   <header class="dash-header sticky top-0 z-30">
     <div class="dash-wrap">
       <div class="dash-topline">
-        <div class="dash-brand"><div class="brand-mark" aria-label="GR inspired mark"><span>G</span><span>R</span></div><div><strong>SUPRA <em>AA</em></strong><small>ANDROID AUTO UPDATES <span class="dash-small-divider">/</span> iDRIVE 6 <span class="app-version" title="Supra AA application version">APP 1.4.1</span></small></div></div>
+        <div class="dash-brand"><div class="brand-mark" aria-label="GR inspired mark"><span>G</span><span>R</span></div><div><strong>SUPRA <em>AA</em></strong><small>ANDROID AUTO UPDATES <span class="dash-small-divider">/</span> iDRIVE 6 <span class="app-version" title="Supra AA application version">APP 1.4.2</span></small></div></div>
         <div class="header-actions"><button id="installAppBtn" type="button" class="install-shortcut" title="Add Supra AA to your home screen or desktop" aria-label="Install app or create shortcut"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v12m0 0 4-4m-4 4-4-4M5 17v3h14v-3"/></svg><span class="install-label">Install App</span></button>
         <button id="themeToggleBtn" type="button" title="Switch between Dark Mode and Light Mode" aria-label="Switch to Light Mode" class="theme-switch">
           <svg id="themeIconSun" class="w-4 h-4 hidden" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path stroke-linecap="round" d="M12 2v2m0 16v2M4.93 4.93l1.42 1.42m11.3 11.3 1.42 1.42M2 12h2m16 0h2M4.93 19.07l1.42-1.42m11.3-11.3 1.42-1.42"/></svg>
@@ -822,9 +822,9 @@
     let installedVersion = "";
     let currentTheme = "dark";
 
-    // Vehicle version is user data, never release-feed state. Persist independently.
-    // Maintain compatibility with older Supra AA releases and repair copies when one
-    // browser storage system is temporarily unavailable.
+    // VEHICLE VERSION - durable user preference. Kept deliberately independent
+    // of the release feed, service worker, theme and app update system.
+    // Original v9 storage key is the source of truth; DO NOT rename it.
     const VEHICLE_STORAGE_KEY = 'supra_aa_installed_version_v2';
     const VEHICLE_BACKUP_KEY = 'supra_aa_vehicle_backup_v1';
     const VEHICLE_RECORD_KEY = 'supra_aa_vehicle_record_v141';
@@ -832,6 +832,7 @@
     const VEHICLE_DB_NAME = 'supra-aa-preferences';
     let userChangedVersionThisSession = false;
     let vehicleSaveGeneration = 0;
+    let vehicleSaveQueue = Promise.resolve();
 
     function safeVehicleVersion(value) {
       return typeof value === 'string' ? value.trim().slice(0, 140) : '';
@@ -839,157 +840,184 @@
     function safeLocalGet(key) {
       try { return window.localStorage.getItem(key); } catch (_) { return null; }
     }
-    function safeLocalSet(key,value) {
-      try { window.localStorage.setItem(key,value); return window.localStorage.getItem(key) === value; }
-      catch (_) { return false; }
+    function safeLocalSet(key, value) {
+      try {
+        window.localStorage.setItem(key, value);
+        return window.localStorage.getItem(key) === value;
+      } catch (_) { return false; }
     }
     function parseVehicleRecord(raw) {
       try {
-        const v = typeof raw === 'string' ? JSON.parse(raw) : raw;
-        if (typeof v === 'string') return {version:safeVehicleVersion(v), savedAt:0};
-        if (v && typeof v === 'object') {
-          const version = safeVehicleVersion(v.version);
-          const savedAt = Number(v.savedAt) || Date.parse(v.savedAt) || 0;
-          return version ? {version,savedAt:Number.isFinite(savedAt)?savedAt:0} : null;
+        const value = typeof raw === 'string' ? JSON.parse(raw) : raw;
+        if (typeof value === 'string') {
+          const version = safeVehicleVersion(value);
+          return version ? {version, savedAt:0} : null;
+        }
+        if (value && typeof value === 'object') {
+          const version = safeVehicleVersion(value.version);
+          const n = Number(value.savedAt);
+          return version ? {version, savedAt:Number.isFinite(n) ? n : 0} : null;
         }
       } catch (_) {}
       return null;
     }
-    function vehicleLocalCandidates() {
-      const records=[];
-      for (const key of [VEHICLE_RECORD_KEY, VEHICLE_BACKUP_KEY]) {
-        const record=parseVehicleRecord(safeLocalGet(key));
-        if (record) records.push(record);
-      }
-      const legacy=safeVehicleVersion(safeLocalGet(VEHICLE_STORAGE_KEY));
-      if (legacy) records.push({version:legacy,savedAt:0});
-      return records;
-    }
     function readVehicleCookie() {
       try {
-        const cookie=document.cookie.split('; ').find(x=>x.startsWith(VEHICLE_COOKIE_KEY+'='));
-        return cookie ? safeVehicleVersion(decodeURIComponent(cookie.slice(VEHICLE_COOKIE_KEY.length+1))) : '';
+        const item = document.cookie.split('; ').find(p => p.startsWith(VEHICLE_COOKIE_KEY + '='));
+        return item ? safeVehicleVersion(decodeURIComponent(item.slice(VEHICLE_COOKIE_KEY.length + 1))) : '';
       } catch (_) { return ''; }
     }
     function writeVehicleCookie(version) {
       try {
         if (location.protocol !== 'https:') return false;
         const path = new URL('.', location.href).pathname;
-        document.cookie = VEHICLE_COOKIE_KEY+'='+encodeURIComponent(version)+'; Max-Age=31536000; Path='+path+'; SameSite=Lax; Secure';
-        return readVehicleCookie()===version;
+        document.cookie = VEHICLE_COOKIE_KEY + '=' + encodeURIComponent(version) +
+          '; Max-Age=31536000; Path=' + path + '; SameSite=Lax; Secure';
+        return readVehicleCookie() === version;
       } catch (_) { return false; }
     }
-    function pickNewestVehicleRecord(records) {
-      return records.filter(r => r && safeVehicleVersion(r.version))
-        .sort((a,b)=>(b.savedAt||0)-(a.savedAt||0))[0] || null;
-    }
-    function saveVehicleLocal(version,savedAt) {
-      const record=JSON.stringify({version,savedAt});
-      const newSaved=safeLocalSet(VEHICLE_RECORD_KEY,record);
-      const backupSaved=safeLocalSet(VEHICLE_BACKUP_KEY,record);
-      const legacySaved=safeLocalSet(VEHICLE_STORAGE_KEY,version);
-      return newSaved || backupSaved || legacySaved;
+    function getSavedVehicleSync() {
+      // The v9 key is always authoritative if present. Previously a late
+      // IndexedDB restore could replace a newer in-memory selection.
+      const primary = safeVehicleVersion(safeLocalGet(VEHICLE_STORAGE_KEY));
+      if (primary) return {version:primary, source:'LocalStorage'};
+      for (const key of [VEHICLE_RECORD_KEY, VEHICLE_BACKUP_KEY]) {
+        const item = parseVehicleRecord(safeLocalGet(key));
+        if (item && item.version) return {version:item.version, source:'Backup'};
+      }
+      const cookie = readVehicleCookie();
+      if (cookie) return {version:cookie, source:'Cookie'};
+      return null;
     }
     function openVehicleDb() {
-      return new Promise((resolve,reject)=>{
-        if (!window.indexedDB) return reject(new Error('IndexedDB unavailable'));
-        const request=indexedDB.open(VEHICLE_DB_NAME,1);
-        request.onupgradeneeded=()=>{
-          if (!request.result.objectStoreNames.contains('settings')) request.result.createObjectStore('settings');
+      return new Promise((resolve, reject) => {
+        if (!window.indexedDB) { reject(new Error('IndexedDB unavailable')); return; }
+        const request = indexedDB.open(VEHICLE_DB_NAME, 1);
+        request.onupgradeneeded = () => {
+          if (!request.result.objectStoreNames.contains('settings'))
+            request.result.createObjectStore('settings');
         };
-        request.onsuccess=()=>resolve(request.result);
-        request.onerror=()=>reject(request.error || new Error('IndexedDB open failed'));
-        request.onblocked=()=>reject(new Error('IndexedDB blocked'));
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error || new Error('IndexedDB error'));
+        request.onblocked = () => reject(new Error('IndexedDB blocked'));
       });
     }
     async function readVehicleDb() {
-      const db=await openVehicleDb();
-      try { return await new Promise((resolve,reject)=>{
-        const request=db.transaction('settings','readonly').objectStore('settings').get('vehicleVersion');
-        request.onsuccess=()=>resolve(parseVehicleRecord(request.result));
-        request.onerror=()=>reject(request.error);
-      }); } finally { db.close(); }
+      const db = await openVehicleDb();
+      try {
+        return await new Promise((resolve, reject) => {
+          const req = db.transaction('settings','readonly').objectStore('settings').get('vehicleVersion');
+          req.onsuccess = () => resolve(parseVehicleRecord(req.result));
+          req.onerror = () => reject(req.error);
+        });
+      } finally { db.close(); }
     }
     async function writeVehicleDb(record) {
-      const db=await openVehicleDb();
-      try { await new Promise((resolve,reject)=>{
-        const tx=db.transaction('settings','readwrite');
-        tx.objectStore('settings').put(record,'vehicleVersion');
-        tx.oncomplete=()=>resolve();
-        tx.onerror=()=>reject(tx.error);
-        tx.onabort=()=>reject(tx.error);
-      }); return true; } finally { db.close(); }
+      const db = await openVehicleDb();
+      try {
+        await new Promise((resolve, reject) => {
+          const tx = db.transaction('settings','readwrite');
+          tx.objectStore('settings').put(record,'vehicleVersion');
+          tx.oncomplete = () => resolve();
+          tx.onerror = () => reject(tx.error);
+          tx.onabort = () => reject(tx.error);
+        });
+        return true;
+      } finally { db.close(); }
     }
-    function showVehicleSaveState(message,problem=false) {
-      const el=document.getElementById('vehicleSaveState');
+    function showVehicleSaveState(message, problem = false) {
+      const el = document.getElementById('vehicleSaveState');
       if (!el) return;
-      el.textContent=message;
-      el.style.color=problem?'var(--hud-amber)':'var(--text-dim)';
+      el.textContent = message;
+      el.style.color = problem ? 'var(--hud-amber)' : 'var(--text-dim)';
     }
-    // Synchronous restore before first render prevents a temporary blank
-    // selector on every app launch. IndexedDB may supply another backup later.
-    const bootVehicleRecord=pickNewestVehicleRecord(vehicleLocalCandidates());
-    installedVersion=(bootVehicleRecord && bootVehicleRecord.version) || readVehicleCookie();
+    function saveVehicleLocal(version, savedAt) {
+      // Write the original key FIRST and verify it by reading it back.
+      const primary = safeLocalSet(VEHICLE_STORAGE_KEY, version);
+      const record = JSON.stringify({version, savedAt});
+      const backup = safeLocalSet(VEHICLE_BACKUP_KEY, record);
+      safeLocalSet(VEHICLE_RECORD_KEY, record);
+      return {primary, backup};
+    }
+
+    // Synchronously recover before first render, just as the stable V9 did.
+    const bootSavedVehicle = getSavedVehicleSync();
+    installedVersion = bootSavedVehicle ? bootSavedVehicle.version : '';
     try {
-      const savedTheme=localStorage.getItem('supra_aa_theme');
-      if (savedTheme==='light'||savedTheme==='dark') currentTheme=savedTheme;
+      const savedTheme = window.localStorage.getItem('supra_aa_theme');
+      if (savedTheme === 'light' || savedTheme === 'dark') currentTheme = savedTheme;
     } catch (_) {}
 
-    let vehicleSaveQueue=Promise.resolve();
-    function persistVehicleVersion(version,reason='selection') {
-      const normalized=safeVehicleVersion(version);
+    function persistVehicleVersion(version, reason='selection') {
+      const normalized = safeVehicleVersion(version);
       if (!normalized) return Promise.resolve(false);
-      const generation=++vehicleSaveGeneration;
-      const record={version:normalized,savedAt:Date.now()};
-      // Save synchronously now, before rendering/reloading and independently
-      // of whether IndexedDB is available or GitHub returns any releases.
-      const localSaved=saveVehicleLocal(normalized,record.savedAt);
-      const cookieSaved=writeVehicleCookie(normalized);
-      showVehicleSaveState(localSaved||cookieSaved
-        ? '✓ Installed version saved on this device'
-        : 'Saving installed version…');
-      // Serialize IndexedDB saves to prevent older async writes winning a race.
-      vehicleSaveQueue=vehicleSaveQueue.catch(()=>{}).then(async()=>{
-        let dbSaved=false;
-        try { dbSaved=await writeVehicleDb(record); } catch (_) {}
-        if (generation===vehicleSaveGeneration) {
-          const ok=localSaved||cookieSaved||dbSaved;
-          showVehicleSaveState(ok ? '✓ Installed version saved on this device'
-            : '⚠ Unable to save on this device. Browser storage may be blocked.', !ok);
+      const generation = ++vehicleSaveGeneration;
+      const record = {version:normalized, savedAt:Date.now()};
+      const saved = saveVehicleLocal(normalized,record.savedAt);
+      const cookieSaved = writeVehicleCookie(normalized);
+      if (saved.primary) {
+        showVehicleSaveState('✓ Saved and verified on this device: ' + normalized);
+      } else if (saved.backup || cookieSaved) {
+        showVehicleSaveState('✓ Saved using backup storage: ' + normalized);
+      } else {
+        showVehicleSaveState('⚠ Browser storage unavailable - choice may disappear after closing.', true);
+      }
+      // IndexedDB is ONLY a backup. It never overwrites a nonempty primary.
+      vehicleSaveQueue = vehicleSaveQueue.catch(() => {}).then(async () => {
+        let dbSaved = false;
+        try { dbSaved = await writeVehicleDb(record); } catch (_) {}
+        if (generation === vehicleSaveGeneration && !saved.primary && !saved.backup && !cookieSaved) {
+          showVehicleSaveState(dbSaved
+            ? '✓ Saved to backup database: ' + normalized
+            : '⚠ Could not save version. Check browser storage permissions.', !dbSaved);
         }
-        return localSaved||cookieSaved||dbSaved;
+        return saved.primary || saved.backup || cookieSaved || dbSaved;
       });
       return vehicleSaveQueue;
     }
+
     async function restoreVehicleVersion() {
-      let dbRecord=null;
-      try { dbRecord=await readVehicleDb(); } catch (_) {}
-      if (userChangedVersionThisSession) return;
-      const records=vehicleLocalCandidates();
-      if (dbRecord) records.push(dbRecord);
-      const cookieValue=readVehicleCookie();
-      if (cookieValue) records.push({version:cookieValue,savedAt:0});
-      const chosen=pickNewestVehicleRecord(records);
-      if (!chosen) {
-        showVehicleSaveState('No saved vehicle version found on this device.');
+      // Read-only restore: no writing on startup, no risk of stale backups
+      // overwriting the selected version or rewriting its timestamp.
+      const synced = getSavedVehicleSync();
+      if (synced) {
+        if (!userChangedVersionThisSession && synced.version !== installedVersion) {
+          installedVersion = synced.version;
+          populateVersionDropdown(); updateDashboard(); renderReleases(); displayCheckResult();
+        }
+        showVehicleSaveState('✓ Restored saved version: ' + synced.version + ' (' + synced.source + ')');
         return;
       }
-      if (chosen.version!==installedVersion) {
-        installedVersion=chosen.version;
-        populateVersionDropdown(); updateDashboard(); renderReleases(); displayCheckResult();
-      }
-      showVehicleSaveState('✓ Installed version restored: '+chosen.version);
-      // Backfill whichever storage copy was lost without resetting the value.
-      // If a fresh change happens later, its newer timestamp takes precedence.
-      await persistVehicleVersion(chosen.version,'restore');
-      try { if (navigator.storage && navigator.storage.persist) await navigator.storage.persist(); } catch (_) {}
-    }
-    window.addEventListener('storage',event=>{
-      if (![VEHICLE_RECORD_KEY,VEHICLE_BACKUP_KEY,VEHICLE_STORAGE_KEY].includes(event.key)) return;
+      // Only look in IndexedDB if ALL synchronous stores are empty.
+      let dbRecord = null;
+      try { dbRecord = await readVehicleDb(); } catch (_) {}
       if (userChangedVersionThisSession) return;
-      const newest=pickNewestVehicleRecord(vehicleLocalCandidates());
-      if (newest && newest.version!==installedVersion) {
-        installedVersion=newest.version;
+      const retrySync = getSavedVehicleSync();
+      if (retrySync) {
+        if (retrySync.version !== installedVersion) {
+          installedVersion = retrySync.version;
+          populateVersionDropdown(); updateDashboard(); renderReleases(); displayCheckResult();
+        }
+        showVehicleSaveState('✓ Restored saved version: ' + retrySync.version);
+        return;
+      }
+      if (dbRecord && dbRecord.version) {
+        installedVersion = dbRecord.version;
+        const restored = saveVehicleLocal(dbRecord.version, Date.now());
+        writeVehicleCookie(dbRecord.version);
+        populateVersionDropdown(); updateDashboard(); renderReleases(); displayCheckResult();
+        showVehicleSaveState('✓ Recovered from backup database: ' + dbRecord.version +
+          (restored.primary ? '' : ' (primary storage blocked)'));
+      } else {
+        showVehicleSaveState('No saved version found in this browser. Choose it once to save.');
+      }
+    }
+    window.addEventListener('storage', event => {
+      if (![VEHICLE_STORAGE_KEY, VEHICLE_BACKUP_KEY, VEHICLE_RECORD_KEY].includes(event.key)) return;
+      if (userChangedVersionThisSession) return;
+      const saved = getSavedVehicleSync();
+      if (saved && saved.version !== installedVersion) {
+        installedVersion = saved.version;
         populateVersionDropdown(); updateDashboard(); renderReleases(); displayCheckResult();
       }
     });
@@ -1711,7 +1739,7 @@
     document.getElementById('installDialog').addEventListener('click', e => {if(e.target === e.currentTarget)e.currentTarget.close();});
     // App code updates are independent of Android Auto release checks.
     // Version metadata is fetched from the server, bypassing HTTP and SW caches.
-    const APP_BUILD = 15;
+    const APP_BUILD = 16;
     const APP_CHECK_MIN_INTERVAL_MS = 60 * 1000;
     let lastAppVersionCheck = 0;
     let discoveredAppBuild = null;
@@ -1779,15 +1807,6 @@
     } else {
       window.addEventListener('load', () => checkAppVersion(true));
     }
-
-    // Browser may freeze an installed PWA without firing unload.
-    // Flush synchronous copies at pagehide if IndexedDB was interrupted.
-    window.addEventListener('pagehide', () => {
-      if (installedVersion) {
-        saveVehicleLocal(installedVersion, Date.now());
-        writeVehicleCookie(installedVersion);
-      }
-    });
 
     // Boot
     applyTheme(currentTheme);

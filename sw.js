@@ -1,6 +1,6 @@
-// Supra AA 1.4.1: network-first document navigation, offline fallback.
+// Supra AA 1.4.2: network-first document navigation, offline fallback.
 // New SW versions install immediately; UI invites user to restart when a new build is live.
-const CACHE = 'supra-aa-a90-1.4.1';
+const CACHE = 'supra-aa-a90-1.4.2';
 const CORE = ['./index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png'];
 self.addEventListener('install', event => {
   event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(CORE)).then(() => self.skipWaiting()));
