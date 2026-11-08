@@ -558,17 +558,6 @@
     .install-nudge button{border:1px solid var(--border-tile);padding:7px 12px;margin-right:6px;background:var(--bg-recessed);color:var(--text-main);border-radius:5px;font-size:12px;cursor:pointer;}
     .install-nudge .nudge-yes{background:var(--gr-red);color:white;border-color:var(--gr-red);}
 
-
-    /* V13 application update prompt. Overlay avoids header reflow and page jumps. */
-    .app-update-banner {position:fixed;left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom, 0px));z-index:110;max-width:490px;margin:0 auto;padding:15px 16px;border:1px solid rgba(239,58,70,.48);border-radius:12px;background:var(--bg-tile);box-shadow:0 12px 45px rgba(0,0,0,.48);color:var(--text-main);}
-    .app-update-banner[hidden]{display:none!important;}
-    .app-update-banner strong{display:block;font-size:14px;margin-bottom:5px;}
-    .app-update-banner p{font-size:12px;color:var(--text-sub);margin:0 0 11px;line-height:1.5;}
-    .app-update-banner .update-actions{display:flex;gap:8px;}
-    .app-update-banner button{cursor:pointer;border-radius:6px;padding:8px 12px;font-size:12px;font-weight:700;}
-    .app-update-banner .update-now{background:var(--gr-red);border:1px solid var(--gr-red);color:#fff;}
-    .app-update-banner .update-later{background:transparent;border:1px solid var(--border-tile);color:var(--text-main);}
-
   </style>
 </head>
 <body class="min-h-screen pb-12">
@@ -576,7 +565,7 @@
   <header class="dash-header sticky top-0 z-30">
     <div class="dash-wrap">
       <div class="dash-topline">
-        <div class="dash-brand"><div class="brand-mark" aria-label="GR inspired mark"><span>G</span><span>R</span></div><div><strong>SUPRA <em>AA</em></strong><small>ANDROID AUTO UPDATES <span class="dash-small-divider">/</span> iDRIVE 6 <span class="app-version" title="Supra AA application version">APP V13</span></small></div></div>
+        <div class="dash-brand"><div class="brand-mark" aria-label="GR inspired mark"><span>G</span><span>R</span></div><div><strong>SUPRA <em>AA</em></strong><small>ANDROID AUTO UPDATES <span class="dash-small-divider">/</span> iDRIVE 6 <span class="app-version" title="Supra AA application version">APP V12</span></small></div></div>
         <div class="header-actions"><button id="installAppBtn" type="button" class="install-shortcut" title="Add Supra AA to your home screen or desktop" aria-label="Install app or create shortcut"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v12m0 0 4-4m-4 4-4-4M5 17v3h14v-3"/></svg><span class="install-label">Install App</span></button>
         <button id="themeToggleBtn" type="button" title="Switch between Dark Mode and Light Mode" aria-label="Switch to Light Mode" class="theme-switch">
           <svg id="themeIconSun" class="w-4 h-4 hidden" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path stroke-linecap="round" d="M12 2v2m0 16v2M4.93 4.93l1.42 1.42m11.3 11.3 1.42 1.42M2 12h2m16 0h2M4.93 19.07l1.42-1.42m11.3-11.3 1.42-1.42"/></svg>
@@ -1531,75 +1520,8 @@
     });
     document.getElementById('closeInstallDialog').addEventListener('click', () => document.getElementById('installDialog').close());
     document.getElementById('installDialog').addEventListener('click', e => {if(e.target === e.currentTarget)e.currentTarget.close();});
-    // V13: app code updates are independent of Android Auto release checks.
-    // Version metadata is fetched from the server, bypassing HTTP and SW caches.
-    const APP_BUILD = 13;
-    const APP_CHECK_MIN_INTERVAL_MS = 60 * 1000;
-    let lastAppVersionCheck = 0;
-    let discoveredAppBuild = null;
-    let updatingApp = false;
-    const appUpdateBanner = document.getElementById('appUpdateBanner');
-
-    function appBuildNumber(label) {
-      const match = String(label || '').match(/(?:^|[^0-9])(?:v)?(\d+)(?:\.\d+)*$/i);
-      return match ? Number(match[1]) : NaN;
-    }
-    function presentAppUpdate(build, title) {
-      if (!Number.isFinite(build) || build <= APP_BUILD) return;
-      discoveredAppBuild = build;
-      document.getElementById('appUpdateTitle').textContent = 'Supra AA V' + build + ' is available';
-      document.getElementById('appUpdateDescription').textContent = 'Update the app interface without reinstalling. Your installed vehicle version will be preserved.';
-      appUpdateBanner.hidden = false;
-    }
-    async function checkAppVersion(force = false) {
-      if (!/^https?:$/.test(location.protocol) || document.visibilityState === 'hidden') return;
-      const now = Date.now();
-      if (!force && now - lastAppVersionCheck < APP_CHECK_MIN_INTERVAL_MS) return;
-      lastAppVersionCheck = now;
-      try {
-        // A query string + no-store is essential, as installed PWAs may cache index.html.
-        const url = new URL('./version.json', location.href);
-        url.searchParams.set('t', String(now));
-        const response = await fetch(url.href, {cache:'no-store', headers:{Accept:'application/json'}});
-        if (!response.ok) return;
-        const manifest = await response.json();
-        const build = Number(manifest.build);
-        presentAppUpdate(build);
-      } catch (error) { /* Offline: retry at next focus or periodic check. */ }
-    }
-    async function restartIntoLatestApp() {
-      if (updatingApp) return;
-      updatingApp = true;
-      const btn = document.getElementById('appUpdateNow');
-      btn.disabled = true;
-      btn.textContent = 'Updating...';
-      try {
-        if ('serviceWorker' in navigator) {
-          const registration = await navigator.serviceWorker.getRegistration('./');
-          if (registration) await registration.update();
-        }
-      } catch (error) { /* Still try a network-forced reload. */ }
-      // Prevent cached HTML from hiding the new app. The SW uses network-first navigation.
-      const next = new URL(location.href);
-      next.searchParams.set('app_v', String(discoveredAppBuild || Date.now()));
-      location.replace(next.href);
-    }
-    document.getElementById('appUpdateNow').addEventListener('click', restartIntoLatestApp);
-    document.getElementById('appUpdateLater').addEventListener('click', () => {appUpdateBanner.hidden = true;});
-    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') checkAppVersion(); });
-    window.addEventListener('focus', () => checkAppVersion());
-    window.addEventListener('pageshow', () => checkAppVersion());
-    window.setInterval(() => checkAppVersion(), 5 * 60 * 1000);
     if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) {
-      window.addEventListener('load', async () => {
-        try {
-          const registration = await navigator.serviceWorker.register('./sw.js', {updateViaCache:'none'});
-          await registration.update();
-        } catch (error) { /* SW may be unavailable; online app updates can still work. */ }
-        checkAppVersion(true);
-      });
-    } else {
-      window.addEventListener('load', () => checkAppVersion(true));
+      window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(() => {}));
     }
 
     // Boot
@@ -1612,10 +1534,5 @@
     fetchLiveGitHubReleases();
     setTimeout(showOneTimeInstallSuggestion, 3000);
   </script>
-  <aside id="appUpdateBanner" class="app-update-banner" role="status" aria-live="polite" hidden>
-    <strong id="appUpdateTitle">App update available</strong>
-    <p id="appUpdateDescription">A new version of Supra AA is ready.</p>
-    <div class="update-actions"><button id="appUpdateNow" type="button" class="update-now">Restart &amp; Update</button><button id="appUpdateLater" type="button" class="update-later">Later</button></div>
-  </aside>
 </body>
 </html>
