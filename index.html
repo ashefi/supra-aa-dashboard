@@ -530,6 +530,34 @@
     @media (display-mode: standalone), (display-mode: fullscreen), (display-mode: minimal-ui) {
       #installAppBtn { display: none !important; }
     }
+
+    /* V12: mobile controls occupy their own row. No overlapping subtitle. */
+    .app-version { color:var(--gr-red);font-weight:800;letter-spacing:.03em;margin-left:4px;white-space:nowrap; }
+    .install-shortcut { border:0 !important;box-shadow:none !important;background:transparent !important; }
+    .theme-switch { border:0 !important;box-shadow:none !important;background:transparent !important; }
+    #installAppBtn[hidden] { display:none!important; }
+    @media(max-width:600px) {
+      .dash-topline {display:grid; grid-template-columns:minmax(0,1fr) auto; grid-template-rows:auto auto; align-items:start; gap:3px 8px; padding:12px 0 9px; min-height:0;}
+      .dash-brand {display:contents;}
+      .dash-brand .brand-mark {grid-column:1;grid-row:1; align-self:start;display:none;}
+      .dash-brand > div:last-child {grid-column:1;grid-row:1 / span 2;min-width:0;align-self:center;}
+      .dash-brand strong {white-space:nowrap;font-size:clamp(21px,6vw,27px);}
+      .dash-brand small {display:block;margin-top:6px;white-space:normal;line-height:1.5;font-size:9px;overflow-wrap:normal;}
+      .header-actions {grid-column:2;grid-row:1;align-self:start;gap:2px;}
+      .theme-switch{min-height:34px;padding:6px 3px;}
+      .install-shortcut {min-height:34px;width:30px;min-width:30px;padding:5px;}
+      .install-shortcut .install-label{display:none;}
+    }
+    /* New release alert is in normal document flow (not header) and never shown on first run. */
+    .new-release-alert{margin:12px 0;border-left:3px solid var(--gr-red);background:var(--bg-tile);padding:12px 38px 12px 13px;position:relative;font-size:12px;line-height:1.5;color:var(--text-main);}
+    .new-release-alert strong{display:block;font-size:13px;margin-bottom:2px;}
+    .new-release-alert button{position:absolute;top:7px;right:9px;color:var(--text-sub);font-size:17px;background:none;border:0;cursor:pointer;}
+    .install-nudge{position:fixed;left:14px;right:14px;bottom:14px;margin:auto;z-index:90;max-width:370px;background:var(--bg-tile);border:1px solid var(--border-highlight);box-shadow:0 14px 48px rgba(0,0,0,.4);padding:16px;border-radius:10px;}
+    .install-nudge strong{display:block;font-size:14px;margin-bottom:6px;}
+    .install-nudge p{font-size:12px;color:var(--text-sub);margin:0 0 12px;line-height:1.5;}
+    .install-nudge button{border:1px solid var(--border-tile);padding:7px 12px;margin-right:6px;background:var(--bg-recessed);color:var(--text-main);border-radius:5px;font-size:12px;cursor:pointer;}
+    .install-nudge .nudge-yes{background:var(--gr-red);color:white;border-color:var(--gr-red);}
+
   </style>
 </head>
 <body class="min-h-screen pb-12">
@@ -537,7 +565,7 @@
   <header class="dash-header sticky top-0 z-30">
     <div class="dash-wrap">
       <div class="dash-topline">
-        <div class="dash-brand"><div class="brand-mark" aria-label="GR inspired mark"><span>G</span><span>R</span></div><div><strong>SUPRA <em>AA</em></strong><small>ANDROID AUTO UPDATES <span class="dash-small-divider">/</span> iDRIVE 6</small></div></div>
+        <div class="dash-brand"><div class="brand-mark" aria-label="GR inspired mark"><span>G</span><span>R</span></div><div><strong>SUPRA <em>AA</em></strong><small>ANDROID AUTO UPDATES <span class="dash-small-divider">/</span> iDRIVE 6 <span class="app-version" title="Supra AA application version">APP V12</span></small></div></div>
         <div class="header-actions"><button id="installAppBtn" type="button" class="install-shortcut" title="Add Supra AA to your home screen or desktop" aria-label="Install app or create shortcut"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v12m0 0 4-4m-4 4-4-4M5 17v3h14v-3"/></svg><span class="install-label">Install App</span></button>
         <button id="themeToggleBtn" type="button" title="Switch between Dark Mode and Light Mode" aria-label="Switch to Light Mode" class="theme-switch">
           <svg id="themeIconSun" class="w-4 h-4 hidden" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path stroke-linecap="round" d="M12 2v2m0 16v2M4.93 4.93l1.42 1.42m11.3 11.3 1.42 1.42M2 12h2m16 0h2M4.93 19.07l1.42-1.42m11.3-11.3 1.42-1.42"/></svg>
@@ -559,6 +587,7 @@
   </header>
 
   <main class="dash-wrap dash-main">
+    <div id="newReleaseAlert" class="new-release-alert" role="status" hidden><strong id="newReleaseTitle"></strong><span id="newReleaseText"></span><button id="dismissNewRelease" type="button" aria-label="Dismiss new release message">×</button></div>
     <div class="cluster-intro"><span>ANDROID AUTO // RELEASE STATUS</span><span>GR SUPRA · NBT-AAD</span></div>
     <section class="instrument-cluster a90-cluster" aria-label="A90-inspired Android Auto release status">
   <div class="a90-instrument-top"><span><i class="cluster-status-light"></i> GR SUPRA / ANDROID AUTO</span><span>SOFTWARE STATUS</span></div>
@@ -668,6 +697,7 @@
   </main>
 
 
+  <aside id="installNudge" class="install-nudge" role="region" aria-label="Install Supra AA" hidden><strong>Install Supra AA?</strong><p>Add this Android Auto update tracker to your home screen or desktop.</p><button id="acceptInstall" type="button" class="nudge-yes">Install</button><button id="declineInstall" type="button">Not now</button></aside>
   <dialog id="installDialog" class="install-dialog" aria-labelledby="installHeading">
     <button id="closeInstallDialog" type="button" class="dialog-close" aria-label="Close install help">✕</button>
     <h2 id="installHeading">ADD SUPRA AA</h2>
@@ -1254,7 +1284,48 @@
       const saved = localStorage.getItem("supra_aa_last_successful_check");
       if (saved && !isNaN(new Date(saved).getTime())) lastSuccessfulCheck = new Date(saved);
     } catch (_) {}
+
+    // V12: newly published GitHub release detection. This checks on opening the app,
+    // and at most once per day while the app stays open. It does NOT deliver background push.
+    const RELEASE_BASELINE_KEY = 'supra_aa_known_release_ids_v12';
+    const NEW_RELEASE_DISMISSED_KEY = 'supra_aa_dismissed_release_ids_v12';
+    function getReleaseFingerprint(release) {
+      return String(release.id ?? release.tag_name ?? release.name ?? '');
+    }
+    function detectNewReleases(liveReleases) {
+      try {
+        const ids = liveReleases.map(getReleaseFingerprint).filter(Boolean);
+        const oldRaw = localStorage.getItem(RELEASE_BASELINE_KEY);
+        const previous = oldRaw ? JSON.parse(oldRaw) : null;
+        localStorage.setItem(RELEASE_BASELINE_KEY, JSON.stringify(ids));
+        if (!Array.isArray(previous)) return; // First check establishes baseline.
+        const previousSet = new Set(previous);
+        const dismissed = new Set(JSON.parse(localStorage.getItem(NEW_RELEASE_DISMISSED_KEY) || '[]'));
+        const newItems = liveReleases.filter(r => !previousSet.has(getReleaseFingerprint(r)) && !dismissed.has(getReleaseFingerprint(r)));
+        if (!newItems.length) return;
+        newItems.sort((a,b) => new Date(b.published_at || 0) - new Date(a.published_at || 0));
+        const box = document.getElementById('newReleaseAlert');
+        document.getElementById('newReleaseTitle').textContent = newItems.length === 1 ? 'New Android Auto release detected' : `${newItems.length} new Android Auto releases detected`;
+        document.getElementById('newReleaseText').textContent = newItems.slice(0,3).map(r => `${getReleaseVersionId(r)} (${classifyRelease(r) === 'stable' ? 'Stable' : 'Testing'})`).join(' · ');
+        box.hidden = false;
+        document.getElementById('dismissNewRelease').onclick = () => {
+          box.hidden = true;
+          const merged = [...dismissed, ...newItems.map(getReleaseFingerprint)];
+          localStorage.setItem(NEW_RELEASE_DISMISSED_KEY, JSON.stringify(merged.slice(-100)));
+        };
+      } catch (e) { /* localStorage may be blocked */ }
+    }
+    // Newly mounted page already checks at startup. Check again if the same tab stays open.
+    let lastFetchAttemptTime = 0;
+    function maybeCheckDaily() {
+      if (document.visibilityState !== 'visible') return;
+      if (Date.now() - lastFetchAttemptTime >= 24 * 60 * 60 * 1000) fetchLiveGitHubReleases();
+    }
+    setInterval(maybeCheckDaily, 60 * 60 * 1000);
+    document.addEventListener('visibilitychange', maybeCheckDaily);
+
     async function fetchLiveGitHubReleases() {
+      lastFetchAttemptTime = Date.now();
       const btn = document.getElementById("refreshBtn");
       const icon = document.getElementById("refreshIcon");
       btn.disabled = true;
@@ -1277,6 +1348,7 @@
             merged.splice(1, 0, FALLBACK_RELEASES[1]);
           }
           allReleases = merged;
+          detectNewReleases(data);
           lastSuccessfulCheck = new Date();
           try { localStorage.setItem("supra_aa_last_successful_check", lastSuccessfulCheck.toISOString()); } catch (_) {}
           showSyncState("success", lastSuccessfulCheck);
@@ -1379,6 +1451,22 @@
     });
 
 
+    // Only offer installation in browser mode, never inside an installed PWA.
+    const INSTALL_NUDGE_KEY = 'supra_aa_install_nudge_seen_v12';
+    function isInstalledApp() {
+      return navigator.standalone === true || ['standalone','fullscreen','minimal-ui'].some(mode => window.matchMedia(`(display-mode: ${mode})`).matches);
+    }
+    function showOneTimeInstallSuggestion() {
+      if (isInstalledApp() || location.protocol === 'file:') return;
+      try {
+        if (localStorage.getItem(INSTALL_NUDGE_KEY)) return;
+        localStorage.setItem(INSTALL_NUDGE_KEY,'1');
+      } catch(e) { return; }
+      document.getElementById('installNudge').hidden = false;
+    }
+    function closeInstallSuggestion() { document.getElementById('installNudge').hidden = true; }
+    document.getElementById('acceptInstall').addEventListener('click', () => {closeInstallSuggestion();document.getElementById('installAppBtn').click();});
+    document.getElementById('declineInstall').addEventListener('click', closeInstallSuggestion);
     // PWA installation when browser supports it; actionable OS-specific guidance otherwise.
     let deferredInstallPrompt = null;
     window.addEventListener('beforeinstallprompt', (event) => {
@@ -1388,6 +1476,7 @@
     window.addEventListener('appinstalled', () => {
       deferredInstallPrompt = null;
       document.getElementById('installAppBtn').hidden = true;
+      closeInstallSuggestion();
     });
     // Standalone mode is the dependable indicator for app windows (including iOS).
     const installedModeQuery = window.matchMedia('(display-mode: standalone)');
@@ -1396,6 +1485,7 @@
         window.matchMedia('(display-mode: fullscreen)').matches ||
         window.matchMedia('(display-mode: minimal-ui)').matches;
       document.getElementById('installAppBtn').hidden = installed;
+      if (installed) closeInstallSuggestion();
     }
     syncInstallButtonVisibility();
     if (installedModeQuery.addEventListener) installedModeQuery.addEventListener('change', syncInstallButtonVisibility);
@@ -1442,6 +1532,7 @@
     renderReleases();
     displayCheckResult();
     fetchLiveGitHubReleases();
+    setTimeout(showOneTimeInstallSuggestion, 3000);
   </script>
 </body>
 </html>
