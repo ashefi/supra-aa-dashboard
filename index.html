@@ -515,6 +515,21 @@
     .install-dialog .dialog-close{float:right;background:var(--bg-recessed);color:var(--text-main);border:1px solid var(--border-tile);border-radius:5px;padding:5px 9px;cursor:pointer}
     @media(max-width:430px){.header-actions{gap:5px}.install-shortcut{font-size:10px;padding:7px 8px}.install-shortcut svg{width:14px;height:14px}.theme-switch{padding:8px 9px;font-size:10px}}
     @media(max-width:350px){.install-shortcut .install-label{display:none}}
+
+    /* V11: fit the compact install affordance without overlapping iDrive label. */
+    @media (max-width: 600px) {
+      .dash-topline { gap: 8px; }
+      .dash-brand { flex: 1 1 auto; min-width: 0; }
+      .dash-brand > div:last-child { min-width: 0; }
+      .dash-brand small { white-space: normal; overflow-wrap: normal; line-height: 1.4; }
+      .header-actions { flex: 0 0 auto; }
+      .install-shortcut { width: 34px; min-width: 34px; padding: 7px; }
+      .install-shortcut .install-label { display: none; }
+    }
+    /* Installed PWA: installation control has no purpose. */
+    @media (display-mode: standalone), (display-mode: fullscreen), (display-mode: minimal-ui) {
+      #installAppBtn { display: none !important; }
+    }
   </style>
 </head>
 <body class="min-h-screen pb-12">
@@ -1370,7 +1385,21 @@
       event.preventDefault();
       deferredInstallPrompt = event;
     });
-    window.addEventListener('appinstalled', () => { deferredInstallPrompt = null; });
+    window.addEventListener('appinstalled', () => {
+      deferredInstallPrompt = null;
+      document.getElementById('installAppBtn').hidden = true;
+    });
+    // Standalone mode is the dependable indicator for app windows (including iOS).
+    const installedModeQuery = window.matchMedia('(display-mode: standalone)');
+    function syncInstallButtonVisibility() {
+      const installed = installedModeQuery.matches || navigator.standalone === true ||
+        window.matchMedia('(display-mode: fullscreen)').matches ||
+        window.matchMedia('(display-mode: minimal-ui)').matches;
+      document.getElementById('installAppBtn').hidden = installed;
+    }
+    syncInstallButtonVisibility();
+    if (installedModeQuery.addEventListener) installedModeQuery.addEventListener('change', syncInstallButtonVisibility);
+    else if (installedModeQuery.addListener) installedModeQuery.addListener(syncInstallButtonVisibility);
     function openInstallHelp() {
       const dlg = document.getElementById('installDialog');
       const info = document.getElementById('installInstructions');
