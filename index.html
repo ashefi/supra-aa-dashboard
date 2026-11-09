@@ -286,6 +286,9 @@
     select, input { color:var(--text-main); background-color:var(--bg-recessed); }
     option { background:var(--bg-tile); color:var(--text-main); }
     .pill-gr { color:var(--gr-red); }
+    .release-status-note { margin:3px 0 9px; font-size:10px; line-height:1.5; color:var(--text-sub); }
+    .pill-released { color:#7dc5f4; border:1px solid rgba(98,178,236,.5); background:rgba(55,126,186,.14); }
+    [data-theme="light"] .pill-released { color:#12608f; border-color:#87b4d2; background:#dff0fc; }
     .release-card { transition: border-color .15s ease; }
     .release-card:hover { border-color:var(--border-highlight); }
     .footer-note { color:var(--text-dim); font-size:10px; line-height:1.7; text-align:center; padding:17px 6px 0; }
@@ -573,7 +576,7 @@
   <header class="dash-header sticky top-0 z-30">
     <div class="dash-wrap">
       <div class="dash-topline">
-        <div class="dash-brand"><div class="brand-mark" aria-label="GR inspired mark"><span>G</span><span>R</span></div><div><strong>SUPRA <em>AA</em></strong><small>ANDROID AUTO UPDATES <span class="dash-small-divider">/</span> iDRIVE 6 <span class="app-version" title="Supra AA application version">APP 1.4.4</span></small></div></div>
+        <div class="dash-brand"><div class="brand-mark" aria-label="GR inspired mark"><span>G</span><span>R</span></div><div><strong>SUPRA <em>AA</em></strong><small>ANDROID AUTO UPDATES <span class="dash-small-divider">/</span> iDRIVE 6 <span class="app-version" title="Supra AA application version">APP 1.4.5</span></small></div></div>
         <div class="header-actions"><button id="installAppBtn" type="button" class="install-shortcut" title="Add Supra AA to your home screen or desktop" aria-label="Install app or create shortcut"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v12m0 0 4-4m-4 4-4-4M5 17v3h14v-3"/></svg><span class="install-label">Install App</span></button>
         <button id="themeToggleBtn" type="button" title="Switch between Dark Mode and Light Mode" aria-label="Switch to Light Mode" class="theme-switch">
           <svg id="themeIconSun" class="w-4 h-4 hidden" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path stroke-linecap="round" d="M12 2v2m0 16v2M4.93 4.93l1.42 1.42m11.3 11.3 1.42 1.42M2 12h2m16 0h2M4.93 19.07l1.42-1.42m11.3-11.3 1.42-1.42"/></svg>
@@ -670,6 +673,7 @@
     </section>
 
     <div class="section-caption">Release history <span class="sort-helper">NEWEST FIRST</span> <span id="releaseCount" class="font-telemetry text-[10px] text-dim-color normal-case tracking-normal"></span></div>
+    <p class="release-status-note">STABLE = confirmed stable · TESTING = experimental · RELEASED = published on GitHub, stability not verified.</p>
     <input id="releaseSearch" class="release-search" type="search" placeholder="Search versions, changes, or release notes" aria-label="Search releases" autocomplete="off" />
     <!-- Channel Filter & Quick Links Bar -->
     <div class="flex flex-wrap items-center justify-between gap-2 pt-0.5">
@@ -677,6 +681,7 @@
         <button id="filterAllBtn" type="button" class="px-3 py-1.5 rounded-lg text-xs font-cluster uppercase font-bold btn-gr-action">All</button>
         <button id="filterStableBtn" type="button" class="px-3 py-1.5 rounded-lg text-xs font-cluster uppercase font-semibold text-sub-color">Stable</button>
         <button id="filterDevBtn" type="button" class="px-3 py-1.5 rounded-lg text-xs font-cluster uppercase font-semibold text-sub-color">Testing</button>
+        <button id="filterReleasedBtn" type="button" class="px-3 py-1.5 rounded-lg text-xs font-cluster uppercase font-semibold text-sub-color">Released</button>
       </div>
 
       <div class="flex items-center gap-1.5">
@@ -880,20 +885,36 @@
       return 0;
     }
 
-    // GitHub's prerelease=false does not necessarily mean a build is production-ready.
-    // Explicit debug, experimental and testing markers override that flag.
+    // VERIFIED RELEASE POLICY: a published GitHub release is NOT automatically
+    // a stable/recommended build. Only explicitly confirmed stable releases qualify.
+    // This allowlist is intentionally conservative and must be changed only with
+    // supporting upstream evidence (e.g. an installer-confirmed stable build).
+    const VERIFIED_STABLE_VERSION_IDS = new Set(["v1.9.33"]);
     function classifyRelease(rel) {
-      const title = [rel.name, rel.tag_name, rel.body || ""].join(" ").toLowerCase();
-      const tag = (rel.tag_name || "").toLowerCase();
-      if (rel.channel === "dev" || rel.prerelease ||
-          /\b(debug|testing|unstable|experimental|alpha|beta|nightly|snapshot|dev build)\b/.test(title) ||
-          /(?:^|[-_])(debug|test|dev|beta|alpha)(?:$|[-_])/.test(tag) ||
-          /wifisel|wifitoggle|bt[s]?pp/.test(title)) return "dev";
-      if (rel.channel === "stable" || /\[stable\]|stable release|turbocode installer/i.test(title)) return "stable";
-      // For otherwise unlabelled GitHub releases, trust the GitHub production flag
-      // only when a conventional version number is present.
-      if (rel.prerelease === false && /v?\d+\.\d+\.\d+/.test([rel.name,rel.tag_name].join(" "))) return "stable";
-      return "dev";
+      const version = getReleaseVersionId(rel).toLowerCase();
+      const name = String(rel.name || "");
+      const tag = String(rel.tag_name || "");
+      const identifiers = [name, tag].join(" ").toLowerCase();
+      const notes = String(rel.body || "").toLowerCase();
+      // Negative labels and GitHub prerelease flag take priority over any
+      // generic version marker. A 'beta' feature mentioned only in release
+      // notes does not automatically make the entire release a testing build.
+      if (rel.prerelease === true || rel.channel === "dev" ||
+          /\b(debug|testing|unstable|experimental|alpha|beta|nightly)\b/.test(identifiers) ||
+          /(?:^|[-_])(debug|test|dev|beta|alpha)(?:$|[-_])/.test(tag.toLowerCase()) ||
+          /wifisel|wifitoggle|bt[s]?pp/.test(identifiers)) return "dev";
+      if (VERIFIED_STABLE_VERSION_IDS.has(version) || /\[stable\]/i.test(name) ||
+          (rel.channel === "stable" && /\[stable\]/i.test(name))) return "stable";
+      // A GitHub 'Latest' label or prerelease=false only confirms publication,
+      // not that the car installer or maintainers recommend it as stable.
+      return "released";
+    }
+    function releaseChannelLabel(rel) {
+      return { stable: "Stable", dev: "Testing", released: "Released" }[classifyRelease(rel)];
+    }
+    function releaseChannelPill(rel) {
+      const kind = classifyRelease(rel);
+      return { stable: "pill-ok", dev: "pill-warn", released: "pill-released" }[kind];
     }
 
     function getReleaseVersionId(rel) {
@@ -938,7 +959,7 @@
         const key = ver.toLowerCase();
         if (!seen.has(key)) {
           seen.add(key);
-          const kind = classifyRelease(rel) === "stable" ? "Stable" : "Testing";
+          const kind = releaseChannelLabel(rel);
           const selectedAttr = (installedVersion && installedVersion.toLowerCase() === key) ? "selected" : "";
           optionsHtml += `<option value="${ver}" ${selectedAttr}>${ver} (${kind})</option>`;
         }
@@ -1045,9 +1066,8 @@
 
     function cumulativeReleaseItem(release) {
       const version = escapeHtml(getReleaseVersionId(release));
-      const stable = classifyRelease(release) === "stable";
-      const channel = stable ? "STABLE" : "TESTING";
-      const pillClass = stable ? "pill-ok" : "pill-warn";
+      const channel = releaseChannelLabel(release).toUpperCase();
+      const pillClass = releaseChannelPill(release);
       const date = release.published_at ? `<span class="cumulative-date">${escapeHtml(formatDate(release.published_at))}</span>` : "";
       return `<li><span class="cumulative-entry-heading"><strong class="font-telemetry">${version}</strong><span class="cumulative-channel ${pillClass}">${channel}</span>${date}</span><span class="cumulative-summary">${escapeHtml(summarizeRelease(release))}</span></li>`;
     }
@@ -1071,6 +1091,8 @@
       setTachNeedle(installedVersion);
       const stableList = sortReleasesNewestFirst(allReleases.filter(r => classifyRelease(r) === "stable"));
       const devList = sortReleasesNewestFirst(allReleases.filter(r => classifyRelease(r) === "dev"));
+      const releasedList = sortReleasesNewestFirst(allReleases.filter(r => classifyRelease(r) === "released"));
+      const topReleased = releasedList[0] || null;
       const topStable = stableList[0] || null;
       const topDev = devList[0] || null;
       const latestStableVer = topStable ? getReleaseVersionId(topStable) : "Not available";
@@ -1097,7 +1119,7 @@
       missedBox.classList.add("hidden");
       if (!installedVersion) {
         showStatus("neutral", "SELECT VERSION", "No Installed Version Selected",
-          `Latest stable: ${latestStableVer}. Latest testing: ${latestDevVer}. Select the version installed on your car.`);
+          `Confirmed stable: ${latestStableVer}. Latest testing: ${latestDevVer}. ${topReleased ? `Newer unverified releases may also be available, including ${getReleaseVersionId(topReleased)}.` : ""} Select the version installed on your car.`);
         return;
       }
       const selected = findInstalledRelease();
@@ -1122,28 +1144,36 @@
         return;
       }
       const selectedKind = classifyRelease(selected);
-      const selectedLabel = selectedKind === "stable" ? "Stable" : "Testing";
+      const selectedLabel = releaseChannelLabel(selected);
       const newerStable = stableList.filter(r => releaseIsAfter(r, selected));
       const newerTesting = devList.filter(r => releaseIsAfter(r, selected));
-      const newerAll = sortReleasesNewestFirst([...newerStable, ...newerTesting]);
+      const newerReleased = releasedList.filter(r => releaseIsAfter(r, selected));
+      const newerAll = sortReleasesNewestFirst([...newerStable, ...newerTesting, ...newerReleased]);
+      const unverifiedText = newerReleased.length
+        ? `${newerReleased.length} newer GitHub release(s) are not confirmed stable${newerReleased[0] ? ` (latest: ${getReleaseVersionId(newerReleased[0])})` : ""}. `
+        : "";
       if (selectedKind === "stable" && newerStable.length === 0) {
-        showStatus("ok", "STABLE CURRENT", `System Up to Date (${installedVersion} Stable)`,
-          newerTesting.length ? `Latest stable release installed. ${newerTesting.length} newer testing release(s) are available, including ${latestDevVer}.` : "Latest known stable release installed.");
+        showStatus("ok", "STABLE CURRENT", `System Up to Date - Stable (${installedVersion})`,
+          `Your installed version matches the latest confirmed stable build. ${unverifiedText}${newerTesting.length ? `${newerTesting.length} newer testing build(s) also exist.` : ""}`);
       } else if (newerStable.length) {
-        showStatus("warn", "UPDATE AVAILABLE", `Update Available: ${installedVersion} (${selectedLabel}) → ${latestStableVer}`,
-          `${newerStable.length} newer stable release(s) and ${newerTesting.length} newer testing release(s) published since your selected build.`);
-      } else if (newerTesting.length) {
-        showStatus("warn", "TESTING UPDATE", `Newer Testing Build Available (${installedVersion} ${selectedLabel})`,
-          `${newerTesting.length} newer testing release(s) published after your selected build. Latest known stable: ${latestStableVer}.`);
+        showStatus("warn", "STABLE UPDATE", `Confirmed Stable Update Available: ${installedVersion} → ${latestStableVer}`,
+          `${newerStable.length} newer confirmed stable release(s). ${unverifiedText}${newerTesting.length} newer testing release(s).`);
+      } else if (selectedKind === "released") {
+        showStatus("neutral", "UNVERIFIED", `Installed GitHub Release (${installedVersion})`,
+          `This release has NOT been confirmed stable. Latest confirmed stable: ${latestStableVer}. ${unverifiedText}${newerTesting.length} newer testing build(s).`);
+      } else if (newerTesting.length || newerReleased.length) {
+        showStatus("warn", "NEWER BUILDS", `Newer Releases Available (${installedVersion} ${selectedLabel})`,
+          `${unverifiedText}${newerTesting.length} newer testing build(s). Latest confirmed stable: ${latestStableVer}.`);
       } else if (selectedKind === "dev") {
-        showStatus("ok", "LATEST TESTING", `Latest Known Testing Build (${installedVersion})`,
-          `This is the newest known testing build. Latest stable release: ${latestStableVer}. Testing is not a stable release.`);
+        showStatus("neutral", "LATEST TESTING", `Latest Known Testing Build (${installedVersion})`,
+          `This is the newest known testing build, not a confirmed stable release. Latest confirmed stable: ${latestStableVer}.`);
       } else {
-        showStatus("ok", "CURRENT", `Current Release (${installedVersion} ${selectedLabel})`, "No newer releases found in the loaded data.");
+        showStatus("neutral", "RELEASE CURRENT", `Current Known Release (${installedVersion} ${selectedLabel})`,
+          `No newer releases found in the loaded data. Latest confirmed stable: ${latestStableVer}.`);
       }
       if (newerAll.length) {
         missedBox.classList.remove("hidden");
-        missedHeader.textContent = `Changes published after ${installedVersion} (${newerStable.length} Stable / ${newerTesting.length} Testing):`;
+        missedHeader.textContent = `Changes published after ${installedVersion} (${newerStable.length} Stable / ${newerTesting.length} Testing / ${newerReleased.length} Released):`;
         missedList.innerHTML = newerAll.map(cumulativeReleaseItem).join("");
       }
     }
@@ -1201,10 +1231,7 @@
               <div class="min-w-0">
                 <div class="flex flex-wrap items-center gap-1.5">
                   <span class="font-telemetry font-bold text-base">${escapeHtml(ver)}</span>
-                  ${isStable
-                    ? `<span class="font-telemetry text-[10px] font-bold px-2 py-0.5 rounded pill-ok">STABLE</span>`
-                    : `<span class="font-telemetry text-[10px] font-bold px-2 py-0.5 rounded pill-warn">TESTING</span>`
-                  }
+                  <span class="font-telemetry text-[10px] font-bold px-2 py-0.5 rounded ${releaseChannelPill(rel)}">${releaseChannelLabel(rel).toUpperCase()}</span>
                   ${isInstalled
                     ? `<span class="font-telemetry text-[10px] font-bold px-2 py-0.5 rounded pill-gr">INSTALLED</span>`
                     : isNewerThanInstalled
@@ -1314,7 +1341,7 @@
         newItems.sort((a,b) => new Date(b.published_at || 0) - new Date(a.published_at || 0));
         const box = document.getElementById('newReleaseAlert');
         document.getElementById('newReleaseTitle').textContent = newItems.length === 1 ? 'New Android Auto release detected' : `${newItems.length} new Android Auto releases detected`;
-        document.getElementById('newReleaseText').textContent = newItems.slice(0,3).map(r => `${getReleaseVersionId(r)} (${classifyRelease(r) === 'stable' ? 'Stable' : 'Testing'})`).join(' · ');
+        document.getElementById('newReleaseText').textContent = newItems.slice(0,3).map(r => `${getReleaseVersionId(r)} (${releaseChannelLabel(r)})`).join(' · ');
         box.hidden = false;
         document.getElementById('dismissNewRelease').onclick = () => {
           box.hidden = true;
@@ -1414,7 +1441,8 @@
       const buttons = {
         all: document.getElementById("filterAllBtn"),
         stable: document.getElementById("filterStableBtn"),
-        dev: document.getElementById("filterDevBtn")
+        dev: document.getElementById("filterDevBtn"),
+        released: document.getElementById("filterReleasedBtn")
       };
       Object.keys(buttons).forEach(key => {
         if (key === filterName) {
@@ -1429,6 +1457,7 @@
     document.getElementById("filterAllBtn").addEventListener("click", () => setFilter("all"));
     document.getElementById("filterStableBtn").addEventListener("click", () => setFilter("stable"));
     document.getElementById("filterDevBtn").addEventListener("click", () => setFilter("dev"));
+    document.getElementById("filterReleasedBtn").addEventListener("click", () => setFilter("released"));
 
     document.getElementById("shareSummaryBtn").addEventListener("click", async () => {
       const stableVer = document.getElementById("latestStableTag").textContent;
