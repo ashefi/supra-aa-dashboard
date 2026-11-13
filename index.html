@@ -569,6 +569,25 @@
     .install-nudge button{border:1px solid var(--border-tile);padding:7px 12px;margin-right:6px;background:var(--bg-recessed);color:var(--text-main);border-radius:5px;font-size:12px;cursor:pointer;}
     .install-nudge .nudge-yes{background:var(--gr-red);color:white;border-color:var(--gr-red);}
 
+    /* 1.4.6: independent opt-in cloud sync UI. Existing cockpit styles are unchanged. */
+    .cloud-sync-strip{display:flex;align-items:center;justify-content:flex-end;gap:10px;padding:5px 0 0;min-height:32px;font-size:11px;color:var(--text-sub);}
+    .cloud-sync-strip button{font-family:'Inter',sans-serif;font-weight:700;font-size:11px;cursor:pointer;color:var(--text-main);background:transparent;border:1px solid var(--border-tile);border-radius:6px;padding:7px 11px;}
+    .cloud-sync-strip button:hover{border-color:var(--border-highlight);}
+    #cloudSyncState{font-family:'JetBrains Mono',monospace;font-size:10px;}
+    #cloudSyncDialog{border:1px solid var(--border-highlight);border-radius:12px;background:var(--bg-tile);color:var(--text-main);width:min(420px,calc(100vw - 28px));max-height:85vh;box-shadow:0 20px 70px #0009;padding:22px;}
+    #cloudSyncDialog::backdrop{background:rgba(0,0,0,.75)}
+    #cloudSyncDialog h3{font-family:'Barlow Condensed',sans-serif;text-transform:uppercase;font-size:24px;font-weight:800;margin:0 0 8px;}
+    #cloudSyncDialog p{font-size:12px;line-height:1.6;color:var(--text-sub);margin:7px 0 12px;overflow-wrap:anywhere;}
+    .cloud-sync-controls{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;}
+    .cloud-sync-controls button{border:1px solid var(--border-tile);background:var(--bg-recessed);color:var(--text-main);font-weight:700;border-radius:6px;font-size:12px;padding:10px 12px;cursor:pointer;}
+    .cloud-sync-controls button.sync-primary{background:var(--gr-red);border-color:var(--gr-red);color:#fff;}
+    #cloudSyncMessage{min-height:20px;font-size:12px;line-height:1.5;color:var(--text-sub);margin-top:12px;white-space:pre-line;overflow-wrap:anywhere;}
+    #cloudConflictBox{padding:10px;border:1px solid var(--hud-amber);border-radius:6px;margin-top:12px;}
+    #cloudConflictBox strong{font-size:12px;color:var(--text-main);}
+    #cloudSyncDialog [hidden]{display:none!important;}
+    @media(max-width:600px){.cloud-sync-strip{justify-content:space-between;gap:6px}.cloud-sync-strip button{padding:6px 8px}.cloud-sync-strip #cloudSyncState{font-size:9px;}}
+
+
   </style>
 </head>
 <body class="min-h-screen pb-12">
@@ -576,7 +595,7 @@
   <header class="dash-header sticky top-0 z-30">
     <div class="dash-wrap">
       <div class="dash-topline">
-        <div class="dash-brand"><div class="brand-mark" aria-label="GR inspired mark"><span>G</span><span>R</span></div><div><strong>SUPRA <em>AA</em></strong><small>ANDROID AUTO UPDATES <span class="dash-small-divider">/</span> iDRIVE 6 <span class="app-version" title="Supra AA application version">APP 1.4.5</span></small></div></div>
+        <div class="dash-brand"><div class="brand-mark" aria-label="GR inspired mark"><span>G</span><span>R</span></div><div><strong>SUPRA <em>AA</em></strong><small>ANDROID AUTO UPDATES <span class="dash-small-divider">/</span> iDRIVE 6 <span class="app-version" title="Supra AA application version">APP 1.4.6</span></small></div></div>
         <div class="header-actions"><button id="installAppBtn" type="button" class="install-shortcut" title="Add Supra AA to your home screen or desktop" aria-label="Install app or create shortcut"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v12m0 0 4-4m-4 4-4-4M5 17v3h14v-3"/></svg><span class="install-label">Install App</span></button>
         <button id="themeToggleBtn" type="button" title="Switch between Dark Mode and Light Mode" aria-label="Switch to Light Mode" class="theme-switch">
           <svg id="themeIconSun" class="w-4 h-4 hidden" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path stroke-linecap="round" d="M12 2v2m0 16v2M4.93 4.93l1.42 1.42m11.3 11.3 1.42 1.42M2 12h2m16 0h2M4.93 19.07l1.42-1.42m11.3-11.3 1.42-1.42"/></svg>
@@ -598,6 +617,10 @@
   </header>
 
   <main class="dash-wrap dash-main">
+    <div class="cloud-sync-strip" aria-live="polite">
+      <span id="cloudSyncState">LOCAL ONLY - SAVED ON DEVICE</span>
+      <button id="cloudSyncOpenBtn" type="button" aria-label="Manage cloud synchronization">☁ Sync</button>
+    </div>
     <div id="newReleaseAlert" class="new-release-alert" role="status" hidden><strong id="newReleaseTitle"></strong><span id="newReleaseText"></span><button id="dismissNewRelease" type="button" aria-label="Dismiss new release message">×</button></div>
     <div class="cluster-intro"><span>ANDROID AUTO // RELEASE STATUS</span><span>GR SUPRA · NBT-AAD</span></div>
     <section class="instrument-cluster a90-cluster" aria-label="A90-inspired Android Auto release status">
@@ -982,6 +1005,11 @@
       updateDashboard();
       renderReleases();
       displayCheckResult();
+      // Cloud sync is entirely optional; the existing localStorage write above
+      // remains the source of truth for offline and signed-out users.
+      window.dispatchEvent(new CustomEvent('supra:installed-version-changed', {
+        detail: { version: installedVersion }
+      }));
     }
 
     // Visual RPM mapping for version vMAJOR.MINOR.PATCH:
@@ -1571,5 +1599,27 @@
     fetchLiveGitHubReleases();
     setTimeout(showOneTimeInstallSuggestion, 3000);
   </script>
+
+  <dialog id="cloudSyncDialog" aria-labelledby="cloudSyncHeading">
+    <h3 id="cloudSyncHeading">Cloud Sync</h3>
+    <p>Optional Google sign-in keeps your installed Android Auto version in sync across devices. Without sign-in, the existing local device memory works as before.</p>
+    <p id="cloudAccountText">Not signed in.</p>
+    <div class="cloud-sync-controls">
+      <button id="cloudSignInBtn" class="sync-primary" type="button">Continue with Google</button>
+      <button id="cloudSignOutBtn" type="button" hidden>Sign Out</button>
+      <button id="cloudCloseBtn" type="button">Close</button>
+    </div>
+    <div id="cloudSyncMessage" role="status" aria-live="polite"></div>
+    <div id="cloudConflictBox" hidden>
+      <strong>Different versions found on these devices</strong>
+      <p id="cloudConflictVersions"></p>
+      <p>Choose which version to keep. Nothing will be replaced until you choose.</p>
+      <div class="cloud-sync-controls">
+        <button id="cloudUseCloudBtn" class="sync-primary" type="button">Use Cloud Version</button>
+        <button id="cloudUseLocalBtn" type="button">Keep This Device's Version</button>
+      </div>
+    </div>
+  </dialog>
+  <script type="module" src="./cloud-sync.js"></script>
 </body>
 </html>
