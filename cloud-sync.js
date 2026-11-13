@@ -4,7 +4,7 @@ import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChang
 import { getFirestore, doc, onSnapshot, setDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore.js';
 
 const config = {
-  apiKey: 'AIzaSyBxkawyRCAxvxc0P_9yrlh6KbPYY_Jux3Y',
+  apiKey: 'AIzaSyBxkawyRCAxyxcOP_9yrlh6KbPYY_Jux3Y',
   authDomain: 'supra-aa-dashboard.firebaseapp.com',
   projectId: 'supra-aa-dashboard',
   storageBucket: 'supra-aa-dashboard.firebasestorage.app',
