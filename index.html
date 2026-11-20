@@ -588,6 +588,14 @@
     @media(max-width:600px){.cloud-sync-strip{justify-content:space-between;gap:6px}.cloud-sync-strip button{padding:6px 8px}.cloud-sync-strip #cloudSyncState{font-size:9px;}}
 
 
+
+    /* Compact, offline, zero-key release summaries */
+    .smart-summary-title {font:700 11px 'Barlow Condensed',Arial,sans-serif;letter-spacing:.09em;color:var(--text-main);display:flex;justify-content:space-between;gap:12px;align-items:center;}
+    .smart-summary-title span {font:600 9px 'JetBrains Mono',monospace;letter-spacing:0;color:var(--text-dim);}
+    .smart-summary-list {margin:7px 0 8px;padding-left:17px;display:grid;gap:6px;list-style:disc;}
+    .smart-summary-list li {font:400 12px/1.5 'Inter',Arial,sans-serif;color:var(--text-sub);}
+    .smart-summary-list strong {color:var(--text-main);font-weight:650;}
+    .smart-summary-warning {font:500 11px/1.5 'Inter',Arial,sans-serif;color:var(--hud-amber);margin-top:8px;}
   </style>
 </head>
 <body class="min-h-screen pb-12">
@@ -595,7 +603,7 @@
   <header class="dash-header sticky top-0 z-30">
     <div class="dash-wrap">
       <div class="dash-topline">
-        <div class="dash-brand"><div class="brand-mark" aria-label="GR inspired mark"><span>G</span><span>R</span></div><div><strong>SUPRA <em>AA</em></strong><small>ANDROID AUTO UPDATES <span class="dash-small-divider">/</span> iDRIVE 6 <span class="app-version" title="Supra AA application version">APP 1.4.7</span></small></div></div>
+        <div class="dash-brand"><div class="brand-mark" aria-label="GR inspired mark"><span>G</span><span>R</span></div><div><strong>SUPRA <em>AA</em></strong><small>ANDROID AUTO UPDATES <span class="dash-small-divider">/</span> iDRIVE 6 <span class="app-version" title="Supra AA application version">APP 1.4.8</span></small></div></div>
         <div class="header-actions"><button id="installAppBtn" type="button" class="install-shortcut" title="Add Supra AA to your home screen or desktop" aria-label="Install app or create shortcut"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v12m0 0 4-4m-4 4-4-4M5 17v3h14v-3"/></svg><span class="install-label">Install App</span></button>
         <button id="themeToggleBtn" type="button" title="Switch between Dark Mode and Light Mode" aria-label="Switch to Light Mode" class="theme-switch">
           <svg id="themeIconSun" class="w-4 h-4 hidden" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path stroke-linecap="round" d="M12 2v2m0 16v2M4.93 4.93l1.42 1.42m11.3 11.3 1.42 1.42M2 12h2m16 0h2M4.93 19.07l1.42-1.42m11.3-11.3 1.42-1.42"/></svg>
@@ -643,11 +651,11 @@
       
     </div>
     <div class="a90-side a90-right">
-      <div class="a90-side-heading"><span class="a90-amberline"></span>LATEST TESTING</div>
-      <div id="latestDevTag" class="a90-version">v1.9.35</div>
-      <div id="latestDevName" class="a90-name">USB Beta Build</div>
-      <div id="latestDevDate" class="a90-date">Nov 7, 2026</div>
-      <button id="markDevInstalledBtn" type="button" class="a90-action">SET INSTALLED <span aria-hidden="true">↗</span></button>
+      <div class="a90-side-heading"><span class="a90-amberline"></span>LATEST RELEASED</div>
+      <div id="latestReleasedTag" class="a90-version">—</div>
+      <div id="latestReleasedName" class="a90-name">No release loaded</div>
+      <div id="latestReleasedDate" class="a90-date"></div>
+      <button id="markReleasedInstalledBtn" type="button" class="a90-action">SET INSTALLED <span aria-hidden="true">↗</span></button>
     </div>
   </div>
   
@@ -956,20 +964,91 @@
       });
     }
 
-    function summarizeRelease(rel) {
-      if (rel.cleanSummary) return rel.cleanSummary;
-      const text = ((rel.name || "") + " " + (rel.body || "")).toLowerCase();
-      const highlights = [];
-      if (text.includes("usb")) highlights.push("USB connectivity improvements");
-      if (text.includes("fps") || text.includes("resolution")) highlights.push("Resolution & 30FPS pacing fixes");
-      if (text.includes("gps")) highlights.push("Car-to-phone GPS forwarding");
-      if (text.includes("settings") || text.includes("menu")) highlights.push("iDrive Settings menu updates");
-      if (text.includes("volume")) highlights.push("Volume slider fix");
-      if (text.includes("screen") || text.includes("layer")) highlights.push("Display layer / artifact fix");
-      if (highlights.length > 0) {
-        return highlights.join(" • ") + ".";
+    // Deterministic, on-device release-note summarizer (no keys, no remote AI,
+    // no fees). Only describe topics actually present in the author's notes.
+    // Full original text is always available under Raw Release Notes.
+    const SUMMARY_RULES = [
+      {id:"favorites", re:/favou?rite[ -]?keys?|favou?rites? bar|NBT_FAVOU?RITE_BAR_HEIGHT/i,
+       title:"Favourite keys", detail:"BMW favourite-key bar can appear over Android Auto, including on the GR Supra."},
+      {id:"status", re:/live status|status line|waiting for phone|waiting: carplay|no carplay:|connected over (wi-?fi|usb)|connection status/i,
+       title:"Connection status", detail:"Clearer messages explain whether Android Auto is waiting for Wi-Fi, USB or a phone."},
+      {id:"manufacturer", re:/car manufacturer|NBT_VEHICLE|\/var\/opt\/aa\/vehicle|reported vehicle identity/i,
+       title:"Vehicle settings", detail:"Adds manufacturer selection (Auto, BMW, Toyota, MINI and Rolls-Royce)."},
+      {id:"settings", re:/disable favorites bar|settings (menu|page)|unified settings|simplif(?:y|ied) settings|new settings|settings checkbox/i,
+       title:"Simpler settings", detail:"Updates the iDrive settings controls and menu."},
+      {id:"volume", re:/volume (osd|overlay|slider|fade|fix|indicator|colour|color)|osd fade|volume fixes/i,
+       title:"Volume display", detail:"Updates the on-screen volume indicator and its behavior."},
+      {id:"db", re:/make_db\.py|polish language|text database|language database|ui string/i,
+       title:"Language/UI fix", detail:"Fixes text database generation so updated interface strings can ship."},
+      {id:"panel", re:/1280x480|1180x480|1440x540|panel resolution|screen resolutions/i,
+       title:"Screen support", detail:"Updates compatibility with additional iDrive screen resolutions."},
+      {id:"usb", re:/\bUSB\b|wired android auto|usb transport|usb recovery/i,
+       title:"USB connectivity", detail:"Changes Android Auto connectivity or operation over USB."},
+      {id:"wifi", re:/wi-?fi direct|carplay wi-?fi|wireless connection|wifi connect/i,
+       title:"Wireless connection", detail:"Changes Wi-Fi / Wi-Fi Direct connection behavior."},
+      {id:"gps", re:/\bGPS\b|location forwarding|position passthrough/i,
+       title:"GPS", detail:"Updates car-to-phone location or GPS forwarding."},
+      {id:"nav", re:/navigation prompt|nav prompt|turn.by.turn|\bHUD\b/i,
+       title:"Navigation", detail:"Updates navigation prompts or instrument display integration."},
+      {id:"camera", re:/rear.?view camera|reverse camera|\bPDC\b|camera overlay|side view|top view/i,
+       title:"Cameras", detail:"Adjusts how Android Auto behaves when factory camera screens appear."},
+      {id:"touch", re:/touch.?screen|touch forward|touch input|touch control/i,
+       title:"Touch controls", detail:"Updates handling of touchscreen input."},
+      {id:"buttons", re:/iDrive controller|steering.wheel button|physical (menu|back) key|button handling/i,
+       title:"Car controls", detail:"Updates integration with factory buttons or the iDrive controller."},
+      {id:"display", re:/layer ?manager|surface 1280|surface 1282|display layer|screen artifact|screen overlay/i,
+       title:"Display", detail:"Changes how Android Auto is layered with the factory iDrive interface."},
+      {id:"performance", re:/30\s?fps|frame pacing|frame rate|timeout|performance fix/i,
+       title:"Performance", detail:"Updates frame pacing, responsiveness or connection timeouts."},
+      {id:"audio", re:/audio routing|audio playback|microphone|sound output/i,
+       title:"Audio", detail:"Updates audio or microphone behavior."},
+      {id:"bluetooth", re:/bluetooth|\bSPP\b/i,
+       title:"Bluetooth", detail:"Changes Bluetooth connection behavior."}
+    ];
+    function releaseSummaryDetails(rel) {
+      if (rel.cleanSummary && !rel.body) return {items:[{title:"Overview",detail:rel.cleanSummary}], warnings:[]};
+      const body = String(rel.body || "");
+      const full = [rel.name || "", body].join("\n");
+      // Explicit caveats must not be presented as verified features.
+      const warningSection = body.match(/(?:\*\*)?not verified on (?:a )?car(?:\*\*)?\s*:?([\s\S]*?)(?=\n\s*#{1,4}\s|$)/i);
+      const warningText = warningSection ? warningSection[1] : "";
+      const substantive = warningSection ? full.replace(warningSection[0], "") : full;
+      const items = [];
+      const seen = new Set();
+      for (const rule of SUMMARY_RULES) {
+        if (rule.re.test(substantive) && !seen.has(rule.id)) {
+          items.push({title:rule.title,detail:rule.detail}); seen.add(rule.id);
+        }
       }
-      return (rel.body || "Official release from Sq00ky/Supra-iDrive6-Android-Auto.").split("\n")[0];
+      // Keep the most distinctive features first rather than generic keywords.
+      const primary = items.slice(0, 6);
+      if (!primary.length) {
+        const clean = body.replace(/```[\s\S]*?```/g," ").replace(/\[[^\]]+\]\([^)]*\)/g," ")
+          .replace(/^[\s>*#-]+/gm, "").replace(/\*\*/g, "").split(/\n+/)
+          .map(line => line.trim()).filter(line => line.length >= 24 && !/^https?:\/\//i.test(line));
+        const first = clean[0] || rel.cleanSummary || rel.name || "No release notes provided.";
+        primary.push({title:"Release notes",detail:first.length > 190 ? first.slice(0,187).trimEnd()+"…" : first});
+      }
+      const warnings = [];
+      if (warningSection) {
+        if (/manufacturer|vehicle identity|MINI/i.test(warningText)) warnings.push("Some manufacturer settings have not been car-verified.");
+        if (/bluetooth|connected over wi-?fi/i.test(warningText)) warnings.push("Bluetooth may still be shown as a Wi-Fi connection.");
+        if (!warnings.length) warnings.push("The author flags some changes as not verified on a car.");
+      } else if (/not car.verified|not tested (on|in) (a )?car|untested on car/i.test(body)) {
+        warnings.push("The author has not verified this release on a car.");
+      }
+      return {items:primary,warnings};
+    }
+    function summarizeRelease(rel) {
+      const data = releaseSummaryDetails(rel);
+      return data.items.map(x => `${x.title}: ${x.detail}`).join(" • ") +
+        (data.warnings.length ? " • Caution: " + data.warnings.join(" ") : "");
+    }
+    function renderSmartSummary(rel) {
+      const data = releaseSummaryDetails(rel);
+      const items = data.items.map(item => `<li><strong>${escapeHtml(item.title)}</strong> - ${escapeHtml(item.detail)}</li>`).join("");
+      const cautions = data.warnings.length ? `<p class="smart-summary-warning">⚠ ${escapeHtml(data.warnings.join(" "))}</p>` : "";
+      return `<div class="smart-summary-title">WHAT'S NEW <span>FREE SMART SUMMARY</span></div><ul class="smart-summary-list">${items}</ul>${cautions}`;
     }
 
     function populateVersionDropdown() {
@@ -1125,7 +1204,7 @@
       const topDev = devList[0] || null;
       const latestStableVer = topStable ? getReleaseVersionId(topStable) : "Not available";
       const latestDevVer = topDev ? getReleaseVersionId(topDev) : "Not available";
-      for (const [kind, top] of [["Stable",topStable],["Dev",topDev]]) {
+      for (const [kind, top] of [["Stable",topStable],["Released",topReleased]]) {
         document.getElementById("latest"+kind+"Tag").textContent = top ? getReleaseVersionId(top) : "—";
         document.getElementById("latest"+kind+"Name").textContent = top ? top.name || top.tag_name : "No release found";
         document.getElementById("latest"+kind+"Date").textContent = top ? formatDate(top.published_at) : "";
@@ -1285,7 +1364,7 @@
             </div>
 
             <div class="recessed-well p-3 space-y-1.5">
-              <p class="text-xs leading-relaxed">${escapeHtml(summary)}</p>
+              ${renderSmartSummary(rel)}
               <details class="text-[11px] text-sub-color pt-1 border-t border-tile-color">
                 <summary class="cursor-pointer font-telemetry text-[10px] text-dim-color select-none">Raw Release Notes</summary>
                 <p class="font-telemetry text-[11px] text-sub-color whitespace-pre-line mt-1.5">${escapeHtml(rawBody)}</p>
@@ -1397,7 +1476,7 @@
       // Preserve the header layout while checking; never collapse its status row.
 
       try {
-        const res = await fetch("https://api.github.com/repos/Sq00ky/Supra-iDrive6-Android-Auto/releases?per_page=15", {
+        const res = await fetch("https://api.github.com/repos/Sq00ky/Supra-iDrive6-Android-Auto/releases?per_page=50", {
           headers: { "Accept": "application/vnd.github+json" }
         });
         if (!res.ok) throw new Error("GitHub API status " + res.status);
@@ -1460,8 +1539,8 @@
       setInstalledVersion(document.getElementById("latestStableTag").textContent.trim());
     });
 
-    document.getElementById("markDevInstalledBtn").addEventListener("click", () => {
-      setInstalledVersion(document.getElementById("latestDevTag").textContent.trim());
+    document.getElementById("markReleasedInstalledBtn").addEventListener("click", () => {
+      setInstalledVersion(document.getElementById("latestReleasedTag").textContent.trim());
     });
 
     function setFilter(filterName) {
@@ -1489,9 +1568,9 @@
 
     document.getElementById("shareSummaryBtn").addEventListener("click", async () => {
       const stableVer = document.getElementById("latestStableTag").textContent;
-      const devVer = document.getElementById("latestDevTag").textContent;
+      const releasedVer = document.getElementById("latestReleasedTag").textContent;
       const myVer = installedVersion ? `My Car: ${installedVersion}\n` : "";
-      const shareText = `GR Supra Android Auto (NBT-AAD) Releases:\n${myVer}• Latest Stable: ${stableVer}\n• Latest Dev: ${devVer}\nhttps://github.com/Sq00ky/Supra-iDrive6-Android-Auto/releases`;
+      const shareText = `GR Supra Android Auto (NBT-AAD) Releases:\n${myVer}• Latest Stable: ${stableVer}\n• Latest Released: ${releasedVer}\nhttps://github.com/Sq00ky/Supra-iDrive6-Android-Auto/releases`;
       const label = document.getElementById("shareBtnLabel");
 
       if (navigator.share) {
