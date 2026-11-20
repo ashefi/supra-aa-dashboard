@@ -505,6 +505,20 @@
     .cumulative-summary { font-size:12px; line-height:1.55; display:block; color:var(--text-main); }
 
 
+    /* 1.4.9: compact update index. Full summaries live only in Release History. */
+    #missedChangesBox {padding:10px 12px;}
+    #missedChangesHeader {font-size:11px;line-height:1.4;}
+    #missedChangesList {margin:6px 0 0;display:grid;gap:0;}
+    #missedChangesList li {padding:0;border-bottom:1px solid var(--border-tile);}
+    #missedChangesList li:last-child {border-bottom:0;}
+    .cumulative-jump {display:flex;align-items:center;gap:9px;min-height:33px;padding:5px 2px;text-decoration:none;color:var(--text-main);border-radius:4px;}
+    .cumulative-jump:hover,.cumulative-jump:focus-visible{background:var(--bg-tile);outline-color:var(--hud-amber);}
+    .cumulative-jump .cumulative-version {font-size:12px;min-width:0;overflow-wrap:anywhere;}
+    .cumulative-jump .cumulative-date {margin-left:auto;white-space:nowrap;}
+    .cumulative-jump .jump-arrow{font:700 13px 'Inter',sans-serif;color:var(--text-dim);margin-left:4px;}
+    .release-card {scroll-margin-top:120px;}
+    @media(max-width:540px){.cumulative-jump{gap:6px;min-height:31px}.cumulative-jump .cumulative-version{font-size:11px}.cumulative-jump .cumulative-date{font-size:9px}.cumulative-channel{font-size:8px;padding:2px 4px}}
+
     /* V9: Fixed-height status slot prevents sticky-header reflow on refresh. */
     .check-result-summary { height:54px; min-height:54px; max-height:54px; overflow:hidden; flex-wrap:nowrap; align-items:center; }
     .check-result-summary strong { flex:0 0 42%; min-width:0; display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; overflow:hidden; line-height:1.1; }
@@ -603,7 +617,7 @@
   <header class="dash-header sticky top-0 z-30">
     <div class="dash-wrap">
       <div class="dash-topline">
-        <div class="dash-brand"><div class="brand-mark" aria-label="GR inspired mark"><span>G</span><span>R</span></div><div><strong>SUPRA <em>AA</em></strong><small>ANDROID AUTO UPDATES <span class="dash-small-divider">/</span> iDRIVE 6 <span class="app-version" title="Supra AA application version">APP 1.4.8</span></small></div></div>
+        <div class="dash-brand"><div class="brand-mark" aria-label="GR inspired mark"><span>G</span><span>R</span></div><div><strong>SUPRA <em>AA</em></strong><small>ANDROID AUTO UPDATES <span class="dash-small-divider">/</span> iDRIVE 6 <span class="app-version" title="Supra AA application version">APP 1.4.9</span></small></div></div>
         <div class="header-actions"><button id="installAppBtn" type="button" class="install-shortcut" title="Add Supra AA to your home screen or desktop" aria-label="Install app or create shortcut"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v12m0 0 4-4m-4 4-4-4M5 17v3h14v-3"/></svg><span class="install-label">Install App</span></button>
         <button id="themeToggleBtn" type="button" title="Switch between Dark Mode and Light Mode" aria-label="Switch to Light Mode" class="theme-switch">
           <svg id="themeIconSun" class="w-4 h-4 hidden" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path stroke-linecap="round" d="M12 2v2m0 16v2M4.93 4.93l1.42 1.42m11.3 11.3 1.42 1.42M2 12h2m16 0h2M4.93 19.07l1.42-1.42m11.3-11.3 1.42-1.42"/></svg>
@@ -1171,12 +1185,16 @@
       needleFrame = requestAnimationFrame(animate);
     }
 
+    function releaseDetailId(version) {
+      return 'release-' + String(version).replace(/[^a-zA-Z0-9_-]/g, '-');
+    }
     function cumulativeReleaseItem(release) {
-      const version = escapeHtml(getReleaseVersionId(release));
+      const versionRaw = getReleaseVersionId(release);
+      const version = escapeHtml(versionRaw);
       const channel = releaseChannelLabel(release).toUpperCase();
       const pillClass = releaseChannelPill(release);
       const date = release.published_at ? `<span class="cumulative-date">${escapeHtml(formatDate(release.published_at))}</span>` : "";
-      return `<li><span class="cumulative-entry-heading"><strong class="font-telemetry">${version}</strong><span class="cumulative-channel ${pillClass}">${channel}</span>${date}</span><span class="cumulative-summary">${escapeHtml(summarizeRelease(release))}</span></li>`;
+      return `<li><a class="cumulative-jump" href="#${releaseDetailId(versionRaw)}" data-jump-version="${version}" title="Jump to the full summary for ${version}"><strong class="font-telemetry cumulative-version">${version}</strong><span class="cumulative-channel ${pillClass}">${channel}</span>${date}<span class="jump-arrow" aria-hidden="true">↓</span></a></li>`;
     }
 
     // Use the release's publication time for relative ordering when both builds
@@ -1280,7 +1298,7 @@
       }
       if (newerAll.length) {
         missedBox.classList.remove("hidden");
-        missedHeader.textContent = `Changes published after ${installedVersion} (${newerStable.length} Stable / ${newerTesting.length} Testing / ${newerReleased.length} Released):`;
+        missedHeader.textContent = `${newerAll.length} newer versions since ${installedVersion} · Tap any version for details`;
         missedList.innerHTML = newerAll.map(cumulativeReleaseItem).join("");
       }
     }
@@ -1333,7 +1351,7 @@
         const rawBody = (rel.body || "No additional technical commit notes.").trim();
 
         return `
-          <article class="cockpit-tile release-card p-4 space-y-2.5 ${isInstalled ? 'accent-bar-ok' : ''}">
+          <article id="${releaseDetailId(ver)}" class="cockpit-tile release-card p-4 space-y-2.5 ${isInstalled ? 'accent-bar-ok' : ''}">
             <div class="flex items-start justify-between gap-2">
               <div class="min-w-0">
                 <div class="flex flex-wrap items-center gap-1.5">
@@ -1560,6 +1578,22 @@
       });
       renderReleases();
     }
+
+    // Links in the compact index jump to the complete entry, even if a filter is active.
+    document.getElementById("missedChangesList").addEventListener("click", event => {
+      const link = event.target.closest("[data-jump-version]");
+      if (!link) return;
+      event.preventDefault();
+      const version = link.getAttribute("data-jump-version");
+      if (currentFilter !== "all") setFilter("all");
+      if (releaseSearchTerm) {
+        releaseSearchTerm = "";
+        document.getElementById("releaseSearch").value = "";
+        renderReleases();
+      }
+      const destination = document.getElementById(releaseDetailId(version));
+      if (destination) destination.scrollIntoView({behavior:"smooth", block:"start"});
+    });
 
     document.getElementById("filterAllBtn").addEventListener("click", () => setFilter("all"));
     document.getElementById("filterStableBtn").addEventListener("click", () => setFilter("stable"));
